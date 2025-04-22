@@ -15,7 +15,13 @@
   <artifactId>chat-client</artifactId>
   <packaging>jar</packaging>
 
-  <!-- client‑specific dependencies go here (none yet) -->
+  <dependencies>
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>2.10.1</version>
+    </dependency>
+  </dependencies>
 
   <build>
     <plugins>

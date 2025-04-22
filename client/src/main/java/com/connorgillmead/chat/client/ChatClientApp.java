@@ -1,7 +1,10 @@
 package com.connorgillmead.chat.client;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Scanner;
 
@@ -21,7 +24,7 @@ public final class ChatClientApp {
      * Private constructor to prevent instantiation.
      * This class is not meant to be instantiated; it only contains a main method.
      */
-    private ChatClientApp() {       
+    private ChatClientApp() {
     }
 
     /**
@@ -33,38 +36,42 @@ public final class ChatClientApp {
     public static void main(String[] args) throws IOException {
         String host = (args.length > 0) ? args[0] : "localhost";
         int    port = (args.length > 1) ? Integer.parseInt(args[1]) : DEFAULT_PORT;
-     
-        try (ChatClient client = new ChatClient(host, port)) {
+
+        try (ChatClient client = new ChatClient(host, port);
+             Scanner    kb     = new Scanner(System.in, "UTF-8")) {
+
             Socket socket = client.socket();
             System.out.printf("Connected to %s:%d%n", host, port);
 
-            /*
-             * Thread B – relay server → stdout
-             * This thread reads from the server's input stream and writes to the standard output stream.
+            System.out.print("Username: ");
+            String me = kb.nextLine();
+
+            /**
+             * Thread B – receive messages
+             * This thread reads messages from the server and prints them to the console.
+             * It runs in a separate thread to allow for concurrent message sending and receiving.
+             * The thread will continue to run until the socket is closed or an I/O error occurs.
              */
             new Thread(() -> {
-                try (InputStream in = socket.getInputStream()) {
-                    in.transferTo(System.out);   // copies until socket closes
-                } catch (IOException e) {
-                    System.out.println("Disconnected from server");
-                }
+                try (BufferedReader in = new BufferedReader(
+                        new InputStreamReader(socket.getInputStream(), "UTF-8"))) {
+                    String line;
+                    while ((line = in.readLine()) != null) {
+                        ChatMessage m = ChatMessage.fromJson(line);
+                        System.out.printf("%s: %s%n", m.getUser(), m.getBody());
+                    }
+                } catch (IOException ignored) { }
             }).start();
 
-            /*
-             * Thread A – stdin → server
-             * This thread reads from the standard input stream (keyboard) and writes to the server's output stream.
-             */
-            var out = socket.getOutputStream();
+            PrintWriter out = new PrintWriter(
+                new OutputStreamWriter(socket.getOutputStream(), "UTF-8"),
+                 true
+                );
 
-            /*
-             * Scanner is used to read lines from the standard input stream (keyboard).
-             * The try-with-resources statement ensures that the Scanner is closed when done.
-             */
-            try (Scanner kb = new Scanner(System.in)) {       // auto‑closes on exit
-                while (kb.hasNextLine()) {
-                    out.write((kb.nextLine() + '\n').getBytes());
-                    out.flush();
-                }
+            while (kb.hasNextLine()) {
+                String text = kb.nextLine();
+                ChatMessage msg = ChatMessage.of(me, text);
+                out.println(msg.toJson());
             }
         }
     }

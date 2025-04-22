@@ -32,6 +32,8 @@ public final class ChatServerApp {
         try (ChatServer tcp = new ChatServer(port)) {
             System.out.println("Server listening on " + port);
 
+            ChatServerHub hub = new ChatServerHub();
+
             /*
              * Thread A – accept connections
              * This thread blocks until a client connects to the server.
@@ -40,20 +42,8 @@ public final class ChatServerApp {
                 Socket socket = tcp.awaitConnection();
                 System.out.println("Client connected " + socket);
 
-                // TODO replace echo with a real ClientHandler
-                new Thread(() -> echoLoop(socket)).start();
+                new Thread(new ClientHandler(socket, hub)).start();
             }
-        }
-    }
-
-    /*
-     * Thread B – echo server
-     * This method reads from the client's input stream and writes to the client's output stream.
-     */
-    private static void echoLoop(Socket socket) {
-        try (socket) {
-            socket.getInputStream().transferTo(socket.getOutputStream());
-        } catch (IOException ignored) {
         }
     }
 }
