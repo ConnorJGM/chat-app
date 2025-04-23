@@ -36,6 +36,8 @@ public final class ChatClientApp {
      * @throws IOException If an I/O error occurs when creating the socket or transferring data.
      */
     public static void main(String[] args) throws IOException {
+        // Get the hostname and port number from command-line arguments.
+        // If no arguments are provided, use "localhost" and the default port number.
         String host = (args.length > 0) ? args[0] : "localhost";
         int    port = (args.length > 1) ? Integer.parseInt(args[1]) : DEFAULT_PORT;
 
@@ -47,11 +49,8 @@ public final class ChatClientApp {
             Socket socket = client.socket();
             System.out.printf("Connected to %s:%d%n", host, port);
 
-            System.out.print("Username: ");
-            String me = kb.nextLine();
-
             /**
-             * Thread B – receive messages
+             * Thread B – receive messages.
              * This thread reads messages from the server and prints them to the console.
              * It runs in a separate thread to allow for concurrent message sending and receiving.
              * The thread will continue to run until the socket is closed or an I/O error occurs.
@@ -67,11 +66,21 @@ public final class ChatClientApp {
                 } catch (IOException ignored) { }
             }).start();
 
-            // Thread A – send messages
+            // Prompt the user for their username.
+            // The username is used to identify the user in the chat.
+            System.out.print("Username: ");
+            String me = kb.nextLine();
+
+            // Thread A – send messages.
+            // This thread sends messages to the server.
+            // It uses a PrintWriter to send text data to the server.
             PrintWriter out = new PrintWriter(
                 new OutputStreamWriter(socket.getOutputStream(), "UTF-8"),
                  true
                 );
+
+            // Notify the server that the user has joined the chat.
+            out.println(ChatMessage.of(me, "joined the chat.").toJson());
 
             // This thread reads user input from the console and sends it to the server.
             // It runs in a loop until the user enters "exit" or an I/O error occurs.

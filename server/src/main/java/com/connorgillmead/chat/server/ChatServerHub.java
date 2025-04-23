@@ -7,6 +7,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -21,6 +24,10 @@ final class ChatServerHub {
      * This is a static final field, meaning it is a constant value that does not change.
      */
     private static final Path LOG = Path.of("chat.log");
+
+    private static final int HISTORY_SIZE = 100;
+
+    private final Deque<ChatMessage> history = new ArrayDeque<>(HISTORY_SIZE);
 
     /**
      * A set of connected clients.
@@ -55,13 +62,31 @@ final class ChatServerHub {
      * Broadcasts a message to all connected clients.
      * This method is called when a client sends a message to the server.
      * It appends the message to the log and sends it to all connected clients.
+     * History is maintained for the last 100 messages.
      * @param msg The message to broadcast.
      */
     void broadcast(ChatMessage msg) {
+        if (history.size() == HISTORY_SIZE) {
+            history.removeFirst();
+
+        }
+        history.addLast(msg);
+
+        // Append the message to the log file.
         append(msg.toJson());
 
-        // Send the message to all clients
+        // Send the message to all clients.
         clients.forEach(c -> c.send(msg));
+    }
+
+    /**
+     * Returns the chat history.
+     * This method returns a copy of the chat history, which is a list of messages.
+     * The history is limited to the last 100 messages.
+     * @return A list of chat messages representing the chat history.
+     */
+    List<ChatMessage> getHistory() {
+        return List.copyOf(history);
     }
 
     /**

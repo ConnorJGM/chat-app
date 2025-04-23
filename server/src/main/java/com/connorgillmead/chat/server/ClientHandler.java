@@ -15,15 +15,14 @@ final class ClientHandler implements Runnable {
     private final Socket socket;
     private final ChatServerHub hub;
     private final String username;
-
     private PrintWriter out;
 
     /**
      * Constructor for ClientHandler.
-     * Initializes the socket, hub, and username for the client.
+     * Initialises the socket, hub, and username for the client.
      *
-     * @param socket The socket representing the connection to the client.
-     * @param hub    The ChatServerHub instance managing all clients.
+     * @param socket   The socket representing the connection to the client.
+     * @param hub      The ChatServerHub instance managing all clients.
      * @param username The username of the client.
      */
     ClientHandler(Socket socket, ChatServerHub hub, String username) {
@@ -34,6 +33,7 @@ final class ClientHandler implements Runnable {
 
     /**
      * Returns the username of the client.
+     * This method is used to identify the client in the chat.
      *
      * @return The username of the client.
      */
@@ -43,17 +43,28 @@ final class ClientHandler implements Runnable {
 
     /**
      * Returns the socket representing the connection to the client.
+     * This method is used to get the socket for sending messages to the client.
      *
      * @return The socket of the client.
      */
-    @Override public void run() {
-        try (socket;
-             BufferedReader in = new BufferedReader(
-                        new InputStreamReader(socket.getInputStream(), "UTF-8"))) {
+    @Override
+    public void run() {
+        try (BufferedReader in = new BufferedReader(
+                new InputStreamReader(socket.getInputStream(), "UTF-8"))) {
 
+            // Get the output stream for sending messages to the client.
+            // The PrintWriter is used to send text data to the client.
+            // The 'true' argument enables auto-flushing (output stream flushed).
             out = new PrintWriter(socket.getOutputStream(), true);
+
+            // Display chat history to the client.
+            hub.getHistory().forEach(this::send);
+
+            // Create new thread for the client and add it to the hub.
             hub.addClient(this);
 
+            // Read messages from the client and broadcast them to all clients.
+            // This loop continues until the client disconnects or an I/O error occurs.
             String line;
             while ((line = in.readLine()) != null) {
                 ChatMessage msg = ChatMessage.fromJson(line);
@@ -61,6 +72,10 @@ final class ClientHandler implements Runnable {
             }
         } catch (IOException ignored) {
         } finally {
+            // Clean up resources when the client disconnects
+            // and notify other clients about the disconnection.
+            ChatMessage bye = ChatMessage.of(username, "left the chat.");
+            hub.broadcast(bye);
             hub.removeClient(this);
             try {
                 socket.close();

@@ -12,12 +12,14 @@ import com.google.gson.Gson;
 public final class ChatMessage {
     private static final Gson GSON = new Gson();
 
+    /// The type of the message (e.g., "chat", "join", "leave").
+    /// This field is used to identify the type of message being sent.
     private String type;
     private String user;
     private String body;
     private long   time;
 
-    /// Getters for the fields
+    /// Getters for the fields.
     public String getType() {
         return type;
     }

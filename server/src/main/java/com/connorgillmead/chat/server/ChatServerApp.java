@@ -34,12 +34,12 @@ public final class ChatServerApp {
         int port = (args.length > 0) ? Integer.parseInt(args[0]) : DEFAULT_PORT;
 
         try (ChatServer tcp = new ChatServer(port)) {
-            System.out.println("Server listening on " + port);
+            System.out.println("Server listening on port:" + port);
 
             ChatServerHub hub = new ChatServerHub();
 
             /*
-             * Thread A – accept connections
+             * Thread A – accept connections.
              * This thread accepts incoming connections from clients and starts a new thread for each client.
              * It reads the first line of input from the client to get the username,
              * and then creates a new ClientHandler thread to handle the client.
@@ -56,9 +56,12 @@ public final class ChatServerApp {
                     continue;
                 }
 
+                // Parse the first line to get the username.
+                // The first line is expected to be a JSON string representing a ChatMessage.
                 ChatMessage hello = ChatMessage.fromJson(firstLine);
                 String username = hello.getUser();
 
+                // Add the client to the hub and broadcast the hello message.
                 hub.broadcast(hello);
 
                 // Thread B – handle client

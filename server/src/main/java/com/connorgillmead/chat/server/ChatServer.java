@@ -12,7 +12,7 @@ import java.net.Socket;
  */
 public final class ChatServer implements AutoCloseable {
 
-    // The server socket used to accept client connections
+    // The server socket used to accept client connections.
     private final ServerSocket serverSocket;
 
     /**
