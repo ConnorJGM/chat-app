@@ -1,3 +1,5 @@
+// ChatClient.java
+
 package com.connorgillmead.chat.client;
 
 import java.io.IOException;

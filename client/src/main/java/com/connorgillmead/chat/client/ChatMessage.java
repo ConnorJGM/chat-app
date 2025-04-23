@@ -1,9 +1,14 @@
+// ChatMessage.java
+
 package com.connorgillmead.chat.client;
 
 import com.google.gson.Gson;
 
 /**
- *
+ * Represents a chat message in the chat application.
+ * This class contains the message type, user, body, and timestamp.
+ * It provides methods to convert the message to and from JSON format.
+ * The message type is used to distinguish between different types of messages (e.g., text, image).
  */
 public final class ChatMessage {
     private static final Gson GSON = new Gson();
@@ -13,6 +18,7 @@ public final class ChatMessage {
     private String body;
     private long   time;
 
+    // Getters for the fields
     public String getType() {
         return type;
     }
@@ -45,10 +51,14 @@ public final class ChatMessage {
         return m;
     }
 
+    /// Converts the ChatMessage object to a JSON string.
+    /// This method uses the Gson library to serialize the object to JSON format.
     public String toJson() {
         return GSON.toJson(this);
     }
 
+    /// Converts a JSON string to a ChatMessage object.
+    /// This method uses the Gson library to deserialize the JSON string into a ChatMessage object.
     public static ChatMessage fromJson(String j) {
         return GSON.fromJson(j, ChatMessage.class);
     }

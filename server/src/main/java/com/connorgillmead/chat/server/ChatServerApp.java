@@ -1,6 +1,10 @@
+// ChatServerHub.java
+
 package com.connorgillmead.chat.server;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
 
 /**
@@ -36,13 +40,30 @@ public final class ChatServerApp {
 
             /*
              * Thread A – accept connections
-             * This thread blocks until a client connects to the server.
+             * This thread accepts incoming connections from clients and starts a new thread for each client.
+             * It reads the first line of input from the client to get the username,
+             * and then creates a new ClientHandler thread to handle the client.
              */
             while (true) {
                 Socket socket = tcp.awaitConnection();
                 System.out.println("Client connected " + socket);
 
-                new Thread(new ClientHandler(socket, hub)).start();
+                BufferedReader in = new BufferedReader(
+                        new InputStreamReader(socket.getInputStream(), "UTF-8"));
+                String firstLine = in.readLine();
+                if (firstLine == null) {
+                    socket.close();
+                    continue;
+                }
+
+                ChatMessage hello = ChatMessage.fromJson(firstLine);
+                String username = hello.getUser();
+
+                hub.broadcast(hello);
+
+                // Thread B – handle client
+                // This thread handles the client connection and processes messages.
+                new Thread(new ClientHandler(socket, hub, username)).start();
             }
         }
     }

@@ -1,3 +1,5 @@
+// ChatClientApp.java
+
 package com.connorgillmead.chat.client;
 
 import java.io.BufferedReader;
@@ -37,6 +39,8 @@ public final class ChatClientApp {
         String host = (args.length > 0) ? args[0] : "localhost";
         int    port = (args.length > 1) ? Integer.parseInt(args[1]) : DEFAULT_PORT;
 
+        // Create a new ChatClient instance and connect to the server.
+        // The try-with-resources statement ensures that the socket is closed properly when done.
         try (ChatClient client = new ChatClient(host, port);
              Scanner    kb     = new Scanner(System.in, "UTF-8")) {
 
@@ -63,11 +67,14 @@ public final class ChatClientApp {
                 } catch (IOException ignored) { }
             }).start();
 
+            // Thread A – send messages
             PrintWriter out = new PrintWriter(
                 new OutputStreamWriter(socket.getOutputStream(), "UTF-8"),
                  true
                 );
 
+            // This thread reads user input from the console and sends it to the server.
+            // It runs in a loop until the user enters "exit" or an I/O error occurs.
             while (kb.hasNextLine()) {
                 String text = kb.nextLine();
                 ChatMessage msg = ChatMessage.of(me, text);
