@@ -1,0 +1,97 @@
+// StatusHttpServer.java
+
+package com.connorgillmead.chat.server;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+
+/**
+ * A simple HTTP server that provides status information about the chat server.
+ * It listens on port 8080 and provides two endpoints:
+ * 1. `/` - Displays the uptime and user count.
+ * 2. `/users` - Displays a list of connected users in HTML format.
+ */
+final class StatusHttpServer {
+
+    // The port number for the HTTP server.
+    // This is a static final field, meaning it is a constant value that does not change.
+    private static final int PORT_HTTP      = 8080;
+
+    // The HTTP status code for OK (200).
+    // This is a static final field, meaning it is a constant value that does not change.
+    // It indicates that the request was successful and the server has returned the requested data.
+    private static final int HTTP_STATUS_OK = 200;
+
+    // Utility class constructor.
+    // This constructor is private to prevent instantiation of the class.
+    private StatusHttpServer() { }
+
+    /**
+     * Starts the HTTP server on port 8080.
+     * @param hub The chat server hub that manages connected users.
+     * @throws IOException If an I/O error occurs when creating the server or handling requests.
+     */
+    static void start(ChatServerHub hub) throws IOException {
+        HttpServer http = HttpServer.create(new InetSocketAddress(PORT_HTTP), 0);
+
+        // The start time of the server in milliseconds.
+        // This variable is used to calculate the uptime of the server.
+        long startMillis = System.currentTimeMillis();
+
+        // / – status page with uptime and user count.
+        // This context handles requests to the root URL ("/") and provides a status page.
+        // It calculates the uptime of the server by subtracting the start time from the current time.
+        // The uptime is displayed in a human-readable format using the Duration class.
+        // The user count is obtained from the ChatServerHub instance.
+        // The response is sent as plain text with a MIME type of "text/plain".
+        http.createContext("/", ex -> {
+            String body = "Uptime : "
+                + Duration.ofMillis(System.currentTimeMillis() - startMillis)
+                + System.lineSeparator()
+                + "Users  : " + hub.userCount();
+            send200(ex, body, "text/plain");
+        });
+
+        // /users – list of connected users in HTML format.
+        // This context handles requests to the "/users" URL and provides a list of connected users in HTML format.
+        // It uses a StringBuilder to construct the HTML response.
+        // The list of usernames is obtained from the ChatServerHub instance.
+        // Each username is added to an unordered list (<ul>) in the HTML response.
+        http.createContext("/users", ex -> {
+            StringBuilder html = new StringBuilder("<h1>Connected users</h1><ul>");
+            hub.getUsernames().forEach(u -> html.append("<li>").append(u).append("</li>"));
+            html.append("</ul>");
+            send200(ex, html.toString(), "text/html");
+        });
+
+        // start the server on port 8080
+        // The server is started with a backlog of 0, which means it will use the default backlog size.
+        http.setExecutor(null);
+        http.start();
+        System.out.println("Status page running at http://localhost:8080/");
+    }
+
+    /*
+     * Sends a 200 OK response with the given body and MIME type.
+     * This method is used to send HTTP responses to the client.
+     * It sets the response headers, including the Content-Type header,
+     * and writes the response body to the output stream.
+     */
+    private static void send200(HttpExchange ex, String body, String mime)
+            throws IOException {
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        ex.getResponseHeaders().add("Content-Type", mime + "; charset=utf-8");
+        ex.sendResponseHeaders(HTTP_STATUS_OK, bytes.length);
+
+        // Write the response body to the output stream.
+        // The response body is the byte array created from the string.
+        try (OutputStream os = ex.getResponseBody()) {
+            os.write(bytes);
+        }
+    }
+}

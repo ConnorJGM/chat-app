@@ -37,6 +37,7 @@ public final class ChatServerApp {
             System.out.println("Server listening on port:" + port);
 
             ChatServerHub hub = new ChatServerHub();
+            StatusHttpServer.start(hub);
 
             /*
              * Thread A – accept connections.

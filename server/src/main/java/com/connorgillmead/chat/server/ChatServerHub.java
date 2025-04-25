@@ -89,6 +89,21 @@ final class ChatServerHub {
         return List.copyOf(history);
     }
 
+    // Returns the number of connected users.
+    // This method returns the size of the set of connected clients.
+    int userCount() {
+        return clients.size();
+    }
+
+    // Returns a list of usernames of connected clients.
+    // This method returns a sorted list of usernames obtained from the set of connected clients.
+    List<String> getUsernames() {
+        return clients.stream()
+                      .map(ClientHandler::getUsername)
+                      .sorted()
+                      .toList();
+    }
+
     /**
      * Appends a line to the log file.
      * This method is called to log events such as client connections and messages.
