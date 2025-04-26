@@ -36,60 +36,112 @@ public final class ChatClientApp {
      * @throws IOException If an I/O error occurs when creating the socket or transferring data.
      */
     public static void main(String[] args) throws IOException {
-        // Get the hostname and port number from command-line arguments.
-        // If no arguments are provided, use "localhost" and the default port number.
-        String host = (args.length > 0) ? args[0] : "localhost";
-        int    port = (args.length > 1) ? Integer.parseInt(args[1]) : DEFAULT_PORT;
 
-        // Create a new ChatClient instance and connect to the server.
-        // The try-with-resources statement ensures that the socket is closed properly when done.
-        try (ChatClient client = new ChatClient(host, port);
-             Scanner    kb     = new Scanner(System.in, "UTF-8")) {
+        try (Scanner console = new Scanner(System.in, "UTF-8")) {
 
-            Socket socket = client.socket();
-            System.out.printf("Connected to %s:%d%n", host, port);
+            // Default host and port values.
+            // If no arguments are provided, the user is prompted for the host and port.
+            String host;
+            int    port;
 
-            /**
-             * Thread B – receive messages.
-             * This thread reads messages from the server and prints them to the console.
-             * It runs in a separate thread to allow for concurrent message sending and receiving.
-             * The thread will continue to run until the socket is closed or an I/O error occurs.
-             */
-            new Thread(() -> {
-                try (BufferedReader in = new BufferedReader(
-                        new InputStreamReader(socket.getInputStream(), "UTF-8"))) {
-                    String line;
-                    while ((line = in.readLine()) != null) {
-                        ChatMessage m = ChatMessage.fromJson(line);
-                        System.out.printf("%s: %s%n", m.getUser(), m.getBody());
+            // If no command-line arguments are provided, prompt the user for the host and port.
+            // The user can press Enter to use the default values.
+            if (args.length == 0) {
+                System.out.print("Server host [localhost]: ");
+                host = console.nextLine().trim();
+                if (host.isEmpty()) {
+                    host = "localhost";
+                }
+
+                // If the user does not provide a host, use "localhost" as the default.
+                while (true) {
+                    System.out.print("Server port [5555]: ");
+                    String p = console.nextLine().trim();
+                    if (p.isEmpty()) {
+                        port = DEFAULT_PORT;
+                        break;
                     }
-                } catch (IOException ignored) { }
-            }).start();
+                    // If the user provides a port, parse it as an integer.
+                    // If the port is invalid, prompt the user to enter a valid number.
+                    try {
+                        port = Integer.parseInt(p);
+                        break;
+                    } catch (NumberFormatException e) {
+                        System.out.println("Invalid port number. Please enter a valid number.");
+                    }
+                }
+            // If the user provides a host and port as command-line arguments, use them.
+            // The first argument is the host, and the second argument is the port.
+            } else if (args.length == 1) {
+                host = args[0];
+                port = DEFAULT_PORT;
+            } else if (args.length == 2) {
+                host = args[0];
+                port = Integer.parseInt(args[1]);
+            } else {
+                System.out.println("Usage: java -jar chat-client.jar [host] [port]");
+                return;
+            }
 
-            // Prompt the user for their username.
-            // The username is used to identify the user in the chat.
-            System.out.print("Username: ");
-            String me = kb.nextLine();
+            // Create a new ChatClient instance and connect to the server.
+            // The try-with-resources statement ensures that the socket is closed properly when done.
+            try (ChatClient client = new ChatClient(host, port)) {
 
-            // Thread A – send messages.
-            // This thread sends messages to the server.
-            // It uses a PrintWriter to send text data to the server.
-            PrintWriter out = new PrintWriter(
-                new OutputStreamWriter(socket.getOutputStream(), "UTF-8"),
-                 true
-                );
+                Socket socket = client.socket();
+                System.out.printf("Connected to %s:%d%n", host, port);
+                startReader(socket);
 
-            // Notify the server that the user has joined the chat.
-            out.println(ChatMessage.of(me, "joined the chat.").toJson());
+                // Prompt the user for their username.
+                // The username is used to identify the user in the chat.
+                System.out.print("Username: ");
+                String me = console.nextLine();
 
-            // This thread reads user input from the console and sends it to the server.
-            // It runs in a loop until the user enters "exit" or an I/O error occurs.
-            while (kb.hasNextLine()) {
-                String text = kb.nextLine();
-                ChatMessage msg = ChatMessage.of(me, text);
-                out.println(msg.toJson());
+                // Thread A – send messages.
+                // This thread sends messages to the server.
+                // It uses a PrintWriter to send text data to the server.
+                PrintWriter out = new PrintWriter(
+                    new OutputStreamWriter(socket.getOutputStream(), "UTF-8"),
+                    true
+                    );
+
+                // Notify the server that the user has joined the chat.
+                out.println(ChatMessage.of(me, "joined the chat.").toJson());
+
+                // This thread reads user input from the console and sends it to the server.
+                // It runs in a loop until the user enters "exit" or an I/O error occurs.
+                while (console.hasNextLine()) {
+                    String text = console.nextLine();
+
+                    // If the user enters "exit", notify the server and break the loop.
+                    // This allows the user to leave the chat gracefully.
+                    if ("quit".equalsIgnoreCase(text.trim())) {
+                        break;
+                    }
+
+                    ChatMessage msg = ChatMessage.of(me, text);
+                    out.println(msg.toJson());
+                }
             }
         }
     }
-}
 
+    private static void startReader(Socket socket) {
+        /**
+        * Thread B – receive messages.
+        * This thread reads messages from the server and prints them to the console.
+        * It runs in a separate thread to allow for concurrent message sending and receiving.
+        * The thread will continue to run until the socket is closed or an I/O error occurs.
+        */
+        new Thread(() -> {
+            try (BufferedReader in = new BufferedReader(
+                    new InputStreamReader(socket.getInputStream(), "UTF-8"))) {
+                String line;
+                while ((line = in.readLine()) != null) {
+                    ChatMessage m = ChatMessage.fromJson(line);
+                    System.out.printf("%s: %s%n", m.getUser(), m.getBody());
+                }
+            } catch (IOException ignored) {
+            }
+        }).start();
+    }
+}

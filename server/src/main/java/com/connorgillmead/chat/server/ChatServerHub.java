@@ -100,7 +100,7 @@ final class ChatServerHub {
     List<String> getUsernames() {
         return clients.stream()
                       .map(ClientHandler::getUsername)
-                      .sorted()
+                      .sorted(String::compareToIgnoreCase)
                       .toList();
     }
 
