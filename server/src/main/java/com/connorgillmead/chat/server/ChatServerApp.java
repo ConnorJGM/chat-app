@@ -2,6 +2,7 @@
 
 package com.connorgillmead.chat.server;
 
+import com.connorgillmead.chat.common.ChatMessage;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;

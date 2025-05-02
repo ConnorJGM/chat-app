@@ -2,6 +2,7 @@
 
 package com.connorgillmead.chat.client;
 
+import com.connorgillmead.chat.common.ChatMessage;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -118,6 +119,8 @@ public final class ChatClientApp {
                         break;
                     }
 
+                    // Messages are sent to the server in JSON format.
+                    // The ChatMessage class is used to create a message object with the username and message body.
                     ChatMessage msg = ChatMessage.of(me, text);
                     out.println(msg.toJson());
                 }
@@ -125,17 +128,22 @@ public final class ChatClientApp {
         }
     }
 
+    /**
+    * Thread B – receive messages.
+    * This thread reads messages from the server and prints them to the console.
+    * It runs in a separate thread to allow for concurrent message sending and receiving.
+    * The thread will continue to run until the socket is closed or an I/O error occurs.
+    */
     private static void startReader(Socket socket) {
-        /**
-        * Thread B – receive messages.
-        * This thread reads messages from the server and prints them to the console.
-        * It runs in a separate thread to allow for concurrent message sending and receiving.
-        * The thread will continue to run until the socket is closed or an I/O error occurs.
-        */
+
+        // Create a new thread to read messages from the server.
         new Thread(() -> {
             try (BufferedReader in = new BufferedReader(
                     new InputStreamReader(socket.getInputStream(), "UTF-8"))) {
                 String line;
+
+                // Read messages from the server in a loop.
+                // Each message is expected to be in JSON format.
                 while ((line = in.readLine()) != null) {
                     ChatMessage m = ChatMessage.fromJson(line);
                     System.out.printf("%s: %s%n", m.getUser(), m.getBody());

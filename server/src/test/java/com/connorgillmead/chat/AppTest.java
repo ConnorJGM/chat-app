@@ -1,6 +1,6 @@
 package com.connorgillmead.chat;
 
-import com.connorgillmead.chat.server.ChatMessage;
+import com.connorgillmead.chat.common.ChatMessage;
 import com.connorgillmead.chat.server.ChatServer;
 import org.junit.jupiter.api.Test;
 

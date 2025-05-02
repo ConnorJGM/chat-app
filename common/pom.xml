@@ -12,14 +12,14 @@
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
-  <artifactId>chat-server</artifactId>
+  <artifactId>chat-common</artifactId>
   <packaging>jar</packaging>
 
   <dependencies>
     <dependency>
-      <groupId>com.connorgillmead.chat</groupId>
-      <artifactId>chat-common</artifactId>
-      <version>${project.parent.version}</version>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>2.10.1</version>
     </dependency>
   </dependencies>
 
@@ -37,7 +37,7 @@
             <configuration>
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>com.connorgillmead.chat.server.ChatServerApp</mainClass>
+                  <mainClass>com.connorgillmead.chat.client.ChatClientApp</mainClass>
                 </transformer>
               </transformers>
             </configuration>
