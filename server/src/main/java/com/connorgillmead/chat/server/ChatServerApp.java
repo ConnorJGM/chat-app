@@ -36,7 +36,12 @@ public final class ChatServerApp {
         try (ChatServer tcp = new ChatServer(port)) {
             System.out.println("Server listening on port:" + port);
 
+            // Create a new ChatServerHub instance to manage connected clients.
+            // The ChatServerHub is responsible for broadcasting messages to all connected clients.
             ChatServerHub hub = new ChatServerHub();
+
+            // Start the HTTP server for status monitoring.
+            // The StatusHttpServer provides a simple HTTP interface to check the server status and connected users.
             StatusHttpServer.start(hub);
 
             /*
@@ -47,7 +52,7 @@ public final class ChatServerApp {
              */
             while (true) {
                 Socket socket = tcp.awaitConnection();
-                System.out.println("Client connected " + socket);
+                System.out.println("Client connected on " + socket);
 
                 BufferedReader in = new BufferedReader(
                         new InputStreamReader(socket.getInputStream(), "UTF-8"));
@@ -60,6 +65,9 @@ public final class ChatServerApp {
                 // Parse the first line to get the username.
                 // The first line is expected to be a JSON string representing a ChatMessage.
                 ChatMessage hello = ChatMessage.fromJson(firstLine);
+
+                // Get the username from the hello message.
+                // The username is extracted from the ChatMessage object.
                 String username = hello.getUser();
 
                 // Add the client to the hub and broadcast the hello message.
