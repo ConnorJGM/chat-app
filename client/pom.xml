@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                              http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-  <!-- inherit version numbers, properties, and plugins from the parent -->
+  <!-- Inherit version numbers, properties, and plugins from the parent. -->
   <parent>
     <groupId>com.connorgillmead.chat</groupId>
     <artifactId>chat-app</artifactId>
@@ -25,7 +25,6 @@
 
   <build>
     <plugins>
-      <!-- Shade plugin: creates runnable fat‑JAR -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>

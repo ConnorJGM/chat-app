@@ -34,7 +34,7 @@ public final class ChatServerApp {
         int port = (args.length > 0) ? Integer.parseInt(args[0]) : DEFAULT_PORT;
 
         try (ChatServer tcp = new ChatServer(port)) {
-            System.out.println("Server listening on port:" + port);
+            System.out.println("Server listening on port: " + port);
 
             // Create a new ChatServerHub instance to manage connected clients.
             // The ChatServerHub is responsible for broadcasting messages to all connected clients.
@@ -52,7 +52,6 @@ public final class ChatServerApp {
              */
             while (true) {
                 Socket socket = tcp.awaitConnection();
-                System.out.println("Client connected on " + socket);
 
                 BufferedReader in = new BufferedReader(
                         new InputStreamReader(socket.getInputStream(), "UTF-8"));
@@ -69,6 +68,10 @@ public final class ChatServerApp {
                 // Get the username from the hello message.
                 // The username is extracted from the ChatMessage object.
                 String username = hello.getUser();
+
+                // Print the connection message to the console.
+                // This message indicates that a new client has connected to the server.
+                System.out.println(username + " connected on " + socket);
 
                 // Add the client to the hub and broadcast the hello message.
                 hub.broadcast(hello);
