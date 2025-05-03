@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.security.GeneralSecurityException;
 import java.util.Scanner;
 
 /**
@@ -35,8 +36,10 @@ public final class ChatClientApp {
      * It connects to the server and starts two threads: one for sending messages and another for receiving messages.
      * @param args The first argument is the hostname, and the second argument is the port number.
      * @throws IOException If an I/O error occurs when creating the socket or transferring data.
+     * @throws GeneralSecurityException If a security error occurs when creating the socket.
+     *         This can happen if the SSL/TLS protocol is not supported or if the trust manager cannot be initialised.
      */
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, GeneralSecurityException {
 
         try (Scanner console = new Scanner(System.in, "UTF-8")) {
 
@@ -125,6 +128,12 @@ public final class ChatClientApp {
                     out.println(msg.toJson());
                 }
             }
+        // Close the socket and release any associated resources.
+        // The try-with-resources statement ensures that the socket is closed properly when done.
+        // Catch any exceptions that occur during the process.
+        // This includes GeneralSecurityException and IOException.
+        } catch (GeneralSecurityException | IOException e) {
+            e.printStackTrace();
         }
     }
 

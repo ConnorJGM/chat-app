@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.security.GeneralSecurityException;
 
 /**
  * Starts the TCP listener and spins up a thread for each client.
@@ -81,6 +82,8 @@ public final class ChatServerApp {
                 // This thread handles the client connection and processes messages.
                 new Thread(new ClientHandler(socket, hub, username)).start();
             }
+        } catch (GeneralSecurityException | IOException e) {
+            e.printStackTrace();
         }
     }
 }

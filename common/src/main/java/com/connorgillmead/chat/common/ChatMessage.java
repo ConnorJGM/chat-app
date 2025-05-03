@@ -2,7 +2,7 @@
 
 package com.connorgillmead.chat.common;
 
-// Gson library for JSON serialization/deserialization.
+// Gson library for JSON serialisation/deserialisation.
 // This library is used to convert Java objects to JSON format and vice versa.
 // It is a popular library for working with JSON in Java applications.
 import com.google.gson.Gson;
