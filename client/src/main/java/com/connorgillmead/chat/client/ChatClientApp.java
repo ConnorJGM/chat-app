@@ -51,18 +51,21 @@ public final class ChatClientApp {
 
             // Begin looping through command-line arguments.
             for (int i = 0; i < args.length;) {
-                String a = args[i];
-
-                // If current argument is "-t", check for token.
-                if ("-t".equals(a) && i + 1 < args.length) {
-                    token = args[i + 1];
-                    i += 2;
-                } else {
-                    host = a;
-                    if (i + 1 < args.length) {
+                switch (args[i]) {
+                    case "--host" -> {
+                        host = args[i + 1];
+                        i += 2;
+                    }
+                    case "--port" -> {
                         port = Integer.parseInt(args[i + 1]);
                         i += 2;
-                    } else {
+                    }
+                    case "--token" -> {
+                        token = args[i + 1];
+                        i += 2;
+                    }
+                    default -> {
+                        port = Integer.parseInt(args[i]);
                         i += 1;
                     }
                 }
@@ -72,9 +75,7 @@ public final class ChatClientApp {
             if (host == null) {
                 System.out.print("Server host [localhost]: ");
                 String h = console.nextLine().trim();
-                if (h.isEmpty()) {
-                    host = "localhost";
-                }
+                host = h.isEmpty() ? "localhost" : h;
             }
 
             // If no port number is given, prompt user for port number.
@@ -163,6 +164,13 @@ public final class ChatClientApp {
                 // Each message is expected to be in JSON format.
                 while ((line = in.readLine()) != null) {
                     ChatMessage m = ChatMessage.fromJson(line);
+
+                    // Exit application if authentication fails.
+                    if ("error".equals(m.getType())) {
+                        System.err.println("Server refused connection: " + m.getBody());
+                        System.exit(1);
+                    }
+
                     System.out.printf("%s: %s%n", m.getUser(), m.getBody());
                 }
             } catch (IOException ignored) {

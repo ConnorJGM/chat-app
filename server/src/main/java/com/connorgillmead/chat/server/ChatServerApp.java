@@ -6,7 +6,10 @@ import com.connorgillmead.chat.common.ChatMessage;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.time.Instant;
 import java.util.Scanner;
@@ -43,31 +46,55 @@ public final class ChatServerApp {
      * @throws IOException If an I/O error occurs when creating the server socket or accepting a connection.
      */
     public static void main(String[] args) throws IOException {
+        String host = "localhost";
         int port = DEFAULT_PORT;
+
+        boolean hostGiven = false;
+        boolean portGiven = false;
 
         // Begin looping through command-line arguments.
         for (int i = 0; i < args.length;) {
-            String a = args[i];
-
-            // If current argument is "--token", check for value.
-            if ("--token".equals(a) && i + 1 < args.length) {
-                expectedToken = args[i + 1];
-                i += 2;
-            } else {
-                // If the user provides a port, parse it as an integer.
-                // If the port is invalid, prompt the user to enter a valid number.
-                try {
-                    port = Integer.parseInt(a);
-                    break;
-                } catch (NumberFormatException e) {
-                    System.out.println("Invalid port number. Please enter a valid number.");
-                    return;
+            switch (args[i]) {
+                case "--host" -> {
+                    host = args[i + 1];
+                    hostGiven = true;
+                    i += 2;
+                }
+                case "--port" -> {
+                    port = Integer.parseInt(args[i + 1]);
+                    portGiven = true;
+                    i += 2;
+                }
+                case "--token" -> {
+                    expectedToken = args[i + 1];
+                    i += 2;
+                }
+                default -> {
+                    port = Integer.parseInt(args[i]);
+                    portGiven = true;
+                    i += 1;
                 }
             }
         }
 
         // Create a Scanner to read user input from the console.
         try (Scanner console = new Scanner(System.in, "UTF-8")) {
+
+            // Check if the user has specified a host.
+            if (!hostGiven) {
+                System.out.print("Bind address [localhost]: ");
+                String h = console.nextLine().trim();
+                host = h.isEmpty() ? "localhost" : h;
+            }
+
+            // Check if the user has specified a port number.
+            if (!portGiven) {
+                System.out.printf("Port [%d]: ", DEFAULT_PORT);
+                String p = console.nextLine().trim();
+                if (!p.isEmpty()) {
+                    port = Integer.parseInt(p);
+                }
+            }
 
             // Check if the expectedToken has not been set (null).
             if (expectedToken == null) {
@@ -77,8 +104,10 @@ public final class ChatServerApp {
             }
         }
 
-        try (ChatServer tcp = new ChatServer(port)) {
-            System.out.println("Server listening on port: " + port);
+        try (ChatServer tcp = new ChatServer(port, host)) {
+            System.out.printf("Starting server on %s:%d  token = %s%n",
+                  host, port,
+                  expectedToken == null ? "<none>" : expectedToken);
 
             // Create a new ChatServerHub instance to manage connected clients.
             // The ChatServerHub is responsible for broadcasting messages to all connected clients.
@@ -113,6 +142,11 @@ public final class ChatServerApp {
                 // Appends authentication failure message if invalid to "chat.log".
                 // Closes socket if token does not equal expectedToken.
                 if (expectedToken != null && !expectedToken.equals(hello.getToken())) {
+                    PrintWriter pw = new PrintWriter(
+                        new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
+                    pw.println(ChatMessage.error("Authentication has failed.").toJson());
+                    pw.flush();
+
                     ChatServerHub.append(String.format("[%s] AUTH_FAIL from %s",
                             Instant.now(), socket.getRemoteSocketAddress()));
                     socket.close();

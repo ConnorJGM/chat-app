@@ -25,7 +25,7 @@ class AppTest {
      */
     @Test
     void serverBindsAndAccepts() throws Exception {
-        try (ChatServer tcp = new ChatServer(0)) {
+        try (ChatServer tcp = new ChatServer(0, "")) {
             int boundPort = tcp.getPort();
             assertTrue(boundPort > 0, "Server should be assigned by OS.");
         }

@@ -4,6 +4,7 @@ package com.connorgillmead.chat.server;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.GeneralSecurityException;
@@ -32,7 +33,7 @@ public final class ChatServer implements AutoCloseable {
      *        This can happen if the keystore file is not found, the password is incorrect,
      *        or the keystore is not in the expected format.
      */
-    public ChatServer(int port) throws IOException, GeneralSecurityException {
+    public ChatServer(int port, String host) throws IOException, GeneralSecurityException {
 
         // Load the keystore from the specified file.
         // The keystore contains the server's private key and certificate chain.
@@ -62,9 +63,16 @@ public final class ChatServer implements AutoCloseable {
         // The SSLServerSocketFactory is used to create server sockets that support SSL/TLS.
         SSLServerSocketFactory ssf = sslCtx.getServerSocketFactory();
 
+        // Bind to the specified host.
+        InetAddress bindAddr = InetAddress.getByName(host);
+
         // Create a server socket that listens on the specified port.
         // The server socket is used to accept incoming connections from clients.
-        this.serverSocket = ssf.createServerSocket(port);
+        this.serverSocket = ssf.createServerSocket(
+            port,
+            0,
+            bindAddr
+            );
     }
 
     /**

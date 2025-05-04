@@ -62,7 +62,6 @@ public final class ChatMessage {
 
     /**
      * Creates a new ChatMessage object with the specified user and token.
-     * The time is set to the current time in milliseconds since the epoch.
      * This message type is used for authentication or connection establishment.
      * @param user The user who is connecting to the chat.
      * @param token The token for authentication or connection establishment.
@@ -77,6 +76,22 @@ public final class ChatMessage {
         m.body = "Welcome to the server!";
         m.time = System.currentTimeMillis();
         m.token = token;
+        return m;
+    }
+
+    /**
+     * Creates a new ChatMessage object with the specified error.
+     * This message type is used for error messages.
+     *
+     * @param text The string of the error.
+     * @return A new ChatMessage object with the specified error.
+     *         The type is set to "error" to indicate an error.
+     */
+    public static ChatMessage error(String text) {
+        ChatMessage m = new ChatMessage();
+        m.type = "error";
+        m.body = text;
+        m.time = System.currentTimeMillis();
         return m;
     }
 
