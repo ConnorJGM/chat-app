@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import javax.net.ssl.KeyManagerFactory;
@@ -41,7 +39,7 @@ public final class ChatServer implements AutoCloseable {
         // The keystore is used to establish a secure connection with the client.
         // The keystore password is "changeit" (this should be changed in a production environment).
         KeyStore ks = KeyStore.getInstance("PKCS12");
-        try (InputStream in = Files.newInputStream(Path.of("keystore.p12"))) {
+        try (InputStream in = ChatServer.class.getResourceAsStream("/keystore.p12")) {
             ks.load(in, "changeit".toCharArray());
         }
 

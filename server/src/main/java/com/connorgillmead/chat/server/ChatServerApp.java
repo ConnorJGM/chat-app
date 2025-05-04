@@ -8,11 +8,21 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.security.GeneralSecurityException;
+import java.time.Instant;
+import java.util.Scanner;
 
 /**
  * Starts the TCP listener and spins up a thread for each client.
  */
 public final class ChatServerApp {
+
+    /**
+     * The expected token for authentication.
+     * This token is used to verify the identity of the client connecting to the server.
+     * It is set via command-line arguments or prompted from the user.
+     * If no token is provided, the server will accept any client connection.
+     */
+    private static String expectedToken;
 
     /**
      * Default port number for the chat server.
@@ -33,7 +43,39 @@ public final class ChatServerApp {
      * @throws IOException If an I/O error occurs when creating the server socket or accepting a connection.
      */
     public static void main(String[] args) throws IOException {
-        int port = (args.length > 0) ? Integer.parseInt(args[0]) : DEFAULT_PORT;
+        int port = DEFAULT_PORT;
+
+        // Begin looping through command-line arguments.
+        for (int i = 0; i < args.length;) {
+            String a = args[i];
+
+            // If current argument is "--token", check for value.
+            if ("--token".equals(a) && i + 1 < args.length) {
+                expectedToken = args[i + 1];
+                i += 2;
+            } else {
+                // If the user provides a port, parse it as an integer.
+                // If the port is invalid, prompt the user to enter a valid number.
+                try {
+                    port = Integer.parseInt(a);
+                    break;
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid port number. Please enter a valid number.");
+                    return;
+                }
+            }
+        }
+
+        // Create a Scanner to read user input from the console.
+        try (Scanner console = new Scanner(System.in, "UTF-8")) {
+
+            // Check if the expectedToken has not been set (null).
+            if (expectedToken == null) {
+                System.out.print("Access token (or press Enter for none): ");
+                String t = console.nextLine().trim();
+                expectedToken = t.isEmpty() ? null : t;
+            }
+        }
 
         try (ChatServer tcp = new ChatServer(port)) {
             System.out.println("Server listening on port: " + port);
@@ -66,6 +108,16 @@ public final class ChatServerApp {
                 // Parse the first line to get the username.
                 // The first line is expected to be a JSON string representing a ChatMessage.
                 ChatMessage hello = ChatMessage.fromJson(firstLine);
+
+                // Authenticate expected token by actual token.
+                // Appends authentication failure message if invalid to "chat.log".
+                // Closes socket if token does not equal expectedToken.
+                if (expectedToken != null && !expectedToken.equals(hello.getToken())) {
+                    ChatServerHub.append(String.format("[%s] AUTH_FAIL from %s",
+                            Instant.now(), socket.getRemoteSocketAddress()));
+                    socket.close();
+                    continue;
+                }
 
                 // Get the username from the hello message.
                 // The username is extracted from the ChatMessage object.

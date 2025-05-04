@@ -26,8 +26,10 @@ final class ChatServerHub {
      */
     private static final Path LOG = Path.of("chat.log");
 
+    // Intialises "HISTORY_SIZE" variable and set it to 100 lines.
     private static final int HISTORY_SIZE = 100;
 
+    // Creates double-ended queue to add and remove messages.
     private final Deque<ChatMessage> history = new ArrayDeque<>(HISTORY_SIZE);
 
     /**
@@ -111,7 +113,7 @@ final class ChatServerHub {
      * It uses the Files.writeString method to write the line to the log file.
      * @param line The line to append to the log file.
      */
-    private static void append(String line) {
+    public static void append(String line) {
         try {
             Files.writeString(
                 LOG,

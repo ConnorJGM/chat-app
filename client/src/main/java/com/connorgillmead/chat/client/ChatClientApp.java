@@ -45,46 +45,54 @@ public final class ChatClientApp {
 
             // Default host and port values.
             // If no arguments are provided, the user is prompted for the host and port.
-            String host;
-            int    port;
+            String host = null;
+            int    port = -1;
+            String token = null;
 
-            // If no command-line arguments are provided, prompt the user for the host and port.
-            // The user can press Enter to use the default values.
-            if (args.length == 0) {
+            // Begin looping through command-line arguments.
+            for (int i = 0; i < args.length;) {
+                String a = args[i];
+
+                // If current argument is "-t", check for token.
+                if ("-t".equals(a) && i + 1 < args.length) {
+                    token = args[i + 1];
+                    i += 2;
+                } else {
+                    host = a;
+                    if (i + 1 < args.length) {
+                        port = Integer.parseInt(args[i + 1]);
+                        i += 2;
+                    } else {
+                        i += 1;
+                    }
+                }
+            }
+
+            // If no host argument is given, prompt user for host name.
+            if (host == null) {
                 System.out.print("Server host [localhost]: ");
-                host = console.nextLine().trim();
-                if (host.isEmpty()) {
+                String h = console.nextLine().trim();
+                if (h.isEmpty()) {
                     host = "localhost";
                 }
+            }
 
-                // If the user does not provide a host, use "localhost" as the default.
-                while (true) {
-                    System.out.print("Server port [5555]: ");
-                    String p = console.nextLine().trim();
-                    if (p.isEmpty()) {
-                        port = DEFAULT_PORT;
-                        break;
-                    }
-                    // If the user provides a port, parse it as an integer.
-                    // If the port is invalid, prompt the user to enter a valid number.
-                    try {
-                        port = Integer.parseInt(p);
-                        break;
-                    } catch (NumberFormatException e) {
-                        System.out.println("Invalid port number. Please enter a valid number.");
-                    }
+            // If no port number is given, prompt user for port number.
+            if (port == -1) {
+                System.out.print("Server port [" + DEFAULT_PORT + "]: ");
+                String p = console.nextLine().trim();
+                if (!p.isEmpty()) {
+                    port = Integer.parseInt(p);
+                } else {
+                    port = DEFAULT_PORT;
                 }
-            // If the user provides a host and port as command-line arguments, use them.
-            // The first argument is the host, and the second argument is the port.
-            } else if (args.length == 1) {
-                host = args[0];
-                port = DEFAULT_PORT;
-            } else if (args.length == 2) {
-                host = args[0];
-                port = Integer.parseInt(args[1]);
-            } else {
-                System.out.println("Usage: java -jar chat-client.jar [host] [port]");
-                return;
+            }
+
+            // If no token is given, prompt user for a token.
+            if (token == null) {
+                System.out.print("Access token (or Enter for none): ");
+                String t = console.nextLine().trim();
+                token = t.isEmpty() ? null : t;
             }
 
             // Create a new ChatClient instance and connect to the server.
@@ -109,7 +117,7 @@ public final class ChatClientApp {
                     );
 
                 // Notify the server that the user has joined the chat.
-                out.println(ChatMessage.of(me, "joined the chat.").toJson());
+                out.println(ChatMessage.hello(me, token).toJson());
 
                 // This thread reads user input from the console and sends it to the server.
                 // It runs in a loop until the user enters "exit" or an I/O error occurs.

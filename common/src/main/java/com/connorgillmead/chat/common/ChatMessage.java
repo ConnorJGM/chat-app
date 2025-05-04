@@ -20,8 +20,9 @@ public final class ChatMessage {
     private String user;
     private String body;
     private long   time;
+    private String token;
 
-    // Getters for the fields
+    // Getters for the fields.
     public String getType() {
         return type;
     }
@@ -38,6 +39,10 @@ public final class ChatMessage {
         return time;
     }
 
+    public String getToken() {
+        return token;
+    }
+
     /**
      * Creates a new ChatMessage object with the specified user and body.
      * The time is set to the current time in milliseconds since the epoch.
@@ -48,9 +53,30 @@ public final class ChatMessage {
      */
     public static ChatMessage of(String user, String body) {
         ChatMessage m = new ChatMessage();
+        m.type = "text";
         m.user = user;
         m.body = body;
         m.time = System.currentTimeMillis();
+        return m;
+    }
+
+    /**
+     * Creates a new ChatMessage object with the specified user and token.
+     * The time is set to the current time in milliseconds since the epoch.
+     * This message type is used for authentication or connection establishment.
+     * @param user The user who is connecting to the chat.
+     * @param token The token for authentication or connection establishment.
+     *             This could be a session token or a unique identifier for the user.
+     * @return A new ChatMessage object with the specified user and token.
+     *         The type is set to "hello" to indicate a connection request.
+     */
+    public static ChatMessage hello(String user, String token) {
+        ChatMessage m = new ChatMessage();
+        m.type = "hello";
+        m.user = user;
+        m.body = "Welcome to the server!";
+        m.time = System.currentTimeMillis();
+        m.token = token;
         return m;
     }
 
