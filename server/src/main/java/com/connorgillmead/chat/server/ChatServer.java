@@ -19,6 +19,9 @@ import javax.net.ssl.SSLServerSocketFactory;
  */
 public final class ChatServer implements AutoCloseable {
 
+    // Constant keystore password for usability.
+    private static final String KS_PASSWORD = "changeit";
+
     // The server socket used to accept client connections.
     private final ServerSocket serverSocket;
 
@@ -41,7 +44,7 @@ public final class ChatServer implements AutoCloseable {
         // The keystore password is "changeit" (this should be changed in a production environment).
         KeyStore ks = KeyStore.getInstance("PKCS12");
         try (InputStream in = ChatServer.class.getResourceAsStream("/keystore.p12")) {
-            ks.load(in, "changeit".toCharArray());
+            ks.load(in, KS_PASSWORD.toCharArray());
         }
 
         // Create a KeyManagerFactory to manage the keys in the keystore.
@@ -50,7 +53,7 @@ public final class ChatServer implements AutoCloseable {
         // The KeyManagerFactory uses the default algorithm to create the key managers.
         KeyManagerFactory kmf =
             KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        kmf.init(ks, "changeit".toCharArray());
+        kmf.init(ks, KS_PASSWORD.toCharArray());
 
         // Create an SSLContext to manage the SSL/TLS protocol.
         // The SSLContext is initialised with the key managers created by the KeyManagerFactory.

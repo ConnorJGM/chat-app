@@ -45,10 +45,11 @@ public final class ChatServerApp {
      * @param args Command line arguments. The first argument is the port number (default is 5555).
      * @throws IOException If an I/O error occurs when creating the server socket or accepting a connection.
      */
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, GeneralSecurityException {
         String host = "localhost";
         int port = DEFAULT_PORT;
 
+        // Used to specify if user enters default values.
         boolean hostGiven = false;
         boolean portGiven = false;
 
@@ -104,7 +105,20 @@ public final class ChatServerApp {
             }
         }
 
-        try (ChatServer tcp = new ChatServer(port, host)) {
+        // Create a new ChatServer object for port and host binding.
+        ChatServer tcp = new ChatServer(port, host);
+
+        // Create a shutdown hook when server is stopped.
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("Shutdown requested - closing server socket.");
+            try {
+                tcp.close();
+            } catch (IOException ignored) {
+            }
+            ChatServerHub.append("[" + Instant.now() + "] SERVER_STOP");
+        }));
+
+        try {
             System.out.printf("Starting server on %s:%d  token = %s%n",
                   host, port,
                   expectedToken == null ? "<none>" : expectedToken);
@@ -116,6 +130,9 @@ public final class ChatServerApp {
             // Start the HTTP server for status monitoring.
             // The StatusHttpServer provides a simple HTTP interface to check the server status and connected users.
             StatusHttpServer.start(hub);
+
+            // Append to "chat.log" when server starts.
+            ChatServerHub.append("[" + Instant.now() + "] SERVER_START");
 
             /*
              * Thread A – accept connections.
@@ -168,7 +185,7 @@ public final class ChatServerApp {
                 // This thread handles the client connection and processes messages.
                 new Thread(new ClientHandler(socket, hub, username)).start();
             }
-        } catch (GeneralSecurityException | IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }

@@ -73,7 +73,7 @@ public final class ChatMessage {
         ChatMessage m = new ChatMessage();
         m.type = "hello";
         m.user = user;
-        m.body = "Welcome to the server!";
+        m.body = "joined the chat.";
         m.time = System.currentTimeMillis();
         m.token = token;
         return m;
