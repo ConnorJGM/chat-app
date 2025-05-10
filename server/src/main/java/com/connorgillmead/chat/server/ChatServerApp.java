@@ -186,7 +186,7 @@ public final class ChatServerApp {
                 new Thread(new ClientHandler(socket, hub, username)).start();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Connection aborted.");
         }
     }
 }
