@@ -64,6 +64,9 @@ final class ClientHandler implements Runnable {
             // Create new thread for the client and add it to the hub.
             hub.addClient(this);
 
+            // Send the list of connected users to the client.
+            send(ChatMessage.userList(hub.getUsernames()));
+
             // Read messages from the client and broadcast them to all clients.
             // This loop continues until the client disconnects or an I/O error occurs.
             String line;
@@ -75,8 +78,7 @@ final class ClientHandler implements Runnable {
         } finally {
             // Clean up resources when the client disconnects
             // and notify other clients about the disconnection.
-            ChatMessage bye = ChatMessage.of(username, "left the chat.");
-            hub.broadcast(bye);
+            hub.broadcast(ChatMessage.bye(username));
             hub.removeClient(this);
             try {
                 socket.close();

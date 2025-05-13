@@ -6,6 +6,7 @@ package com.connorgillmead.chat.common;
 // This library is used to convert Java objects to JSON format and vice versa.
 // It is a popular library for working with JSON in Java applications.
 import com.google.gson.Gson;
+import java.util.List;
 
 /**
  * Represents a chat message in the chat application.
@@ -21,6 +22,7 @@ public final class ChatMessage {
     private String body;
     private long   time;
     private String token;
+    private List<String> users;
 
     // Getters for the fields.
     public String getType() {
@@ -41,6 +43,10 @@ public final class ChatMessage {
 
     public String getToken() {
         return token;
+    }
+
+    public List<String> getUserList() {
+        return (List<String>) users;
     }
 
     /**
@@ -91,6 +97,38 @@ public final class ChatMessage {
         ChatMessage m = new ChatMessage();
         m.type = "error";
         m.body = text;
+        m.time = System.currentTimeMillis();
+        return m;
+    }
+
+    /**
+     * Creates a new ChatMessage object with the specified type, user, body, and time.
+     * The "bye" message type is used to indicate that a user has left the chat.
+     * This constructor is used for deserialization from JSON.
+     *
+     * @param user The user who sent the message.
+     */
+    public static ChatMessage bye(String user) {
+        ChatMessage m = new ChatMessage();
+        m.type = "bye";
+        m.user = user;
+        m.body = "left the chat.";
+        m.time = System.currentTimeMillis();
+        return m;
+    }
+
+    /**
+     * Creates a new ChatMessage object with the specified list of users.
+     * This message type is used to send the list of connected users to the client.
+     *
+     * @param users The list of connected users.
+     * @return A new ChatMessage object with the specified list of users.
+     *         The type is set to "roster" to indicate a user list message.
+     */
+    public static ChatMessage userList(List<String> users) {
+        ChatMessage m = new ChatMessage();
+        m.type = "roster";
+        m.users = List.copyOf(users);
         m.time = System.currentTimeMillis();
         return m;
     }

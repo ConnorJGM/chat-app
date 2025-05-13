@@ -47,6 +47,7 @@ final class ChatServerHub {
         clients.add(c);
         append(String.format("[%s] JOIN %s",
                Instant.now(), c.getUsername()));
+        listClients();
     }
 
     /**
@@ -59,6 +60,14 @@ final class ChatServerHub {
         clients.remove(c);
         append(String.format("[%s] LEAVE %s",
                Instant.now(), c.getUsername()));
+        listClients();
+    }
+
+    // Sends a list of connected clients to all clients.
+    // This method creates a new ChatMessage object with the type "userList"
+    private void listClients() {
+        ChatMessage list = ChatMessage.userList(getUsernames());
+        clients.forEach(c -> c.send(list));
     }
 
     /**
