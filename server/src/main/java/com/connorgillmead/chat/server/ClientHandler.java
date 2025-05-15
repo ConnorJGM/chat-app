@@ -79,6 +79,7 @@ final class ClientHandler implements Runnable {
             // Clean up resources when the client disconnects
             // and notify other clients about the disconnection.
             hub.broadcast(ChatMessage.bye(username));
+            hub.releaseName(username);
             hub.removeClient(this);
             try {
                 socket.close();

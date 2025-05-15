@@ -2,36 +2,13 @@
 
 package com.connorgillmead.chat.server;
 
-import com.connorgillmead.chat.common.ChatMessage;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.time.Instant;
-import java.util.Scanner;
 
 /**
  * Starts the TCP listener and spins up a thread for each client.
  */
 public final class ChatServerApp {
-
-    /**
-     * The expected token for authentication.
-     * This token is used to verify the identity of the client connecting to the server.
-     * It is set via command-line arguments or prompted from the user.
-     * If no token is provided, the server will accept any client connection.
-     */
-    private static String expectedToken;
-
-    /**
-     * Default port number for the chat server.
-     * This is used if no port number is provided as a command-line argument.
-     */
-    private static final int DEFAULT_PORT = 5555;
 
     /**
      * Private constructor to prevent instantiation.
@@ -44,147 +21,39 @@ public final class ChatServerApp {
      * Main method to start the server.
      * @param args Command line arguments. The first argument is the port number (default is 5555).
      * @throws IOException If an I/O error occurs when creating the server socket or accepting a connection.
+     * @throws GeneralSecurityException If a security error occurs when creating the server socket.
      */
     public static void main(String[] args) throws IOException, GeneralSecurityException {
-        String host = "localhost";
-        int port = DEFAULT_PORT;
 
-        // Used to specify if user enters default values.
-        boolean hostGiven = false;
-        boolean portGiven = false;
+        // Parse command line arguments and create a SerConfig object.
+        // The SerConfig class is responsible for handling server configuration.
+        SerConfig cfg = SerConfig.argumentPrompt(SerConfig.parseArgs(args));
 
-        // Begin looping through command-line arguments.
-        for (int i = 0; i < args.length;) {
-            switch (args[i]) {
-                case "--host" -> {
-                    host = args[i + 1];
-                    hostGiven = true;
-                    i += 2;
-                }
-                case "--port" -> {
-                    port = Integer.parseInt(args[i + 1]);
-                    portGiven = true;
-                    i += 2;
-                }
-                case "--token" -> {
-                    expectedToken = args[i + 1];
-                    i += 2;
-                }
-                default -> {
-                    port = Integer.parseInt(args[i]);
-                    portGiven = true;
-                    i += 1;
-                }
-            }
-        }
+        // Create a new ChatServer instance to listen for incoming connections.
+        // The ChatServer is a TCP server that listens for incoming connections on the specified port and host.
+        // The ChatServer also handles the server's shutdown process.
+        try (ChatServer tcp = new ChatServer(cfg.port(), cfg.host())) {
 
-        // Create a Scanner to read user input from the console.
-        try (Scanner console = new Scanner(System.in, "UTF-8")) {
-
-            // Check if the user has specified a host.
-            if (!hostGiven) {
-                System.out.print("Bind address [localhost]: ");
-                String h = console.nextLine().trim();
-                host = h.isEmpty() ? "localhost" : h;
-            }
-
-            // Check if the user has specified a port number.
-            if (!portGiven) {
-                System.out.printf("Port [%d]: ", DEFAULT_PORT);
-                String p = console.nextLine().trim();
-                if (!p.isEmpty()) {
-                    port = Integer.parseInt(p);
-                }
-            }
-
-            // Check if the expectedToken has not been set (null).
-            if (expectedToken == null) {
-                System.out.print("Access token (or press Enter for none): ");
-                String t = console.nextLine().trim();
-                expectedToken = t.isEmpty() ? null : t;
-            }
-        }
-
-        // Create a new ChatServer object for port and host binding.
-        ChatServer tcp = new ChatServer(port, host);
-
-        // Create a shutdown hook when server is stopped.
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("Shutdown requested - closing server socket.");
-            try {
-                tcp.close();
-            } catch (IOException ignored) {
-            }
-            ChatServerHub.append("[" + Instant.now() + "] SERVER_STOP");
-        }));
-
-        try {
-            System.out.printf("Starting server on %s:%d  token = %s%n",
-                  host, port,
-                  expectedToken == null ? "<none>" : expectedToken);
+            // Shutdown the server if it is already running.
+            // The shutdownServer method is used to close the server socket and release resources.
+            SerConfig.shutdownServer(tcp);
 
             // Create a new ChatServerHub instance to manage connected clients.
             // The ChatServerHub is responsible for broadcasting messages to all connected clients.
-            ChatServerHub hub = new ChatServerHub();
+            ChatServerHub hub = SerConfig.startAncillaryServer(cfg);
 
-            // Start the HTTP server for status monitoring.
-            // The StatusHttpServer provides a simple HTTP interface to check the server status and connected users.
-            StatusHttpServer.start(hub);
+            // Print the server's host, port, and token (if provided) to the console.
+            // This information is useful for clients to connect to the server.
+            System.out.printf("Starting server on %s:%d  token = %s%n",
+                  cfg.host(), cfg.port(),
+                  cfg.token() == null ? "<none>" : cfg.token());
 
-            // Append to "chat.log" when server starts.
-            ChatServerHub.append("[" + Instant.now() + "] SERVER_START");
+            // Accept incoming connections and create a new ClientHandler for each client.
+            // The ClientHandler is responsible for handling communication with a single client.
+            SerConfig.acceptLoop(cfg, hub, tcp);
 
-            /*
-             * Thread A – accept connections.
-             * This thread accepts incoming connections from clients and starts a new thread for each client.
-             * It reads the first line of input from the client to get the username,
-             * and then creates a new ClientHandler thread to handle the client.
-             */
-            while (true) {
-                Socket socket = tcp.awaitConnection();
-
-                BufferedReader in = new BufferedReader(
-                        new InputStreamReader(socket.getInputStream(), "UTF-8"));
-                String firstLine = in.readLine();
-                if (firstLine == null) {
-                    socket.close();
-                    continue;
-                }
-
-                // Parse the first line to get the username.
-                // The first line is expected to be a JSON string representing a ChatMessage.
-                ChatMessage hello = ChatMessage.fromJson(firstLine);
-
-                // Authenticate expected token by actual token.
-                // Appends authentication failure message if invalid to "chat.log".
-                // Closes socket if token does not equal expectedToken.
-                if (expectedToken != null && !expectedToken.equals(hello.getToken())) {
-                    PrintWriter pw = new PrintWriter(
-                        new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
-                    pw.println(ChatMessage.error("Authentication has failed.").toJson());
-                    pw.flush();
-
-                    ChatServerHub.append(String.format("[%s] AUTH_FAIL from %s",
-                            Instant.now(), socket.getRemoteSocketAddress()));
-                    socket.close();
-                    continue;
-                }
-
-                // Get the username from the hello message.
-                // The username is extracted from the ChatMessage object.
-                String username = hello.getUser();
-
-                // Print the connection message to the console.
-                // This message indicates that a new client has connected to the server.
-                System.out.println(username + " connected on " + socket);
-
-                // Add the client to the hub and broadcast the hello message.
-                hub.broadcast(hello);
-
-                // Thread B – handle client
-                // This thread handles the client connection and processes messages.
-                new Thread(new ClientHandler(socket, hub, username)).start();
-            }
+        // Connection aborted.
+        // The try-with-resources statement automatically closes the server socket when done.
         } catch (IOException e) {
             System.err.println("Connection aborted.");
         }

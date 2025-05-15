@@ -32,11 +32,13 @@ final class ChatServerHub {
     // Creates double-ended queue to add and remove messages.
     private final Deque<ChatMessage> history = new ArrayDeque<>(HISTORY_SIZE);
 
-    /**
-     * A set of connected clients.
-     * This is a thread-safe set that allows concurrent access from multiple threads.
-     */
+    // Creates a thread-safe set to store connected clients.
+    // This set allows concurrent access from multiple threads.
     private final Set<ClientHandler> clients = ConcurrentHashMap.newKeySet();
+
+    // Creates a thread-safe set to store usernames in use.
+    // This set allows concurrent access from multiple threads.
+    private final Set<String> namesInUse = ConcurrentHashMap.newKeySet();
 
     /**
      * Private constructor to prevent instantiation.
@@ -68,6 +70,30 @@ final class ChatServerHub {
     private void listClients() {
         ChatMessage list = ChatMessage.userList(getUsernames());
         clients.forEach(c -> c.send(list));
+    }
+
+    /**
+     * Reserves a username for a client.
+     * This method is called when a client connects to the server.
+     * @param user The username to reserve.
+     * This method adds the username to the set of names in use.
+     * @return True if the name was successfully reserved, false if it was already in use.
+     * This method checks if the username is already in use by another client.
+     */
+    boolean reserveName(String user) {
+        return namesInUse.add(user.toLowerCase());
+    }
+
+    /**
+     * Releases a reserved name.
+     * This method is called when a client disconnects or changes their username.
+     * @param user The username to release.
+     * This method removes the username from the set of names in use.
+     */
+    void releaseName(String user) {
+        if (user != null) {
+            namesInUse.remove(user.toLowerCase());
+        }
     }
 
     /**
