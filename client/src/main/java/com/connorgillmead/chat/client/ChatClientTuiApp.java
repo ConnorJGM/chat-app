@@ -13,6 +13,8 @@ import com.googlecode.lanterna.gui2.Label;
 import com.googlecode.lanterna.gui2.MultiWindowTextGUI;
 import com.googlecode.lanterna.gui2.Panel;
 import com.googlecode.lanterna.gui2.TextBox;
+import com.googlecode.lanterna.gui2.Window;
+import com.googlecode.lanterna.gui2.WindowListenerAdapter;
 import com.googlecode.lanterna.gui2.dialogs.MessageDialogBuilder;
 import com.googlecode.lanterna.gui2.dialogs.MessageDialogButton;
 import com.googlecode.lanterna.gui2.table.Table;
@@ -29,6 +31,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -68,15 +71,13 @@ public final class ChatClientTuiApp {
         }
     }
 
-    // This method runs the chat client in lanterna mode.
-    // It uses the Lanterna library to create a text-based user interface (TUI).
-    // It connects to the server and starts two threads: one for sending messages and another for receiving messages.
-    // The method takes a MultiWindowTextGUI object and a CliConfig object as parameters.
-    // The MultiWindowTextGUI object is used to create the user interface, and the CliConfig object contains the host,
-    // port, user, and token information.
-    // The method prompts the user for connection details (host, port, username, and token)
-    // and then connects to the server.
-    // It creates a new BasicWindow object to display the chat interface.
+    /**
+     * runLanternaClient(...) creates a new terminal screen using the DefaultTerminalFactory.
+     * It prompts the user for connection details (host, port, username, and token) and then connects to the server.
+     * It launches the chat GUI and starts two threads: one for sending messages and another for receiving messages.
+     * @throws IOException If an I/O error occurs when creating the socket or transferring data.
+     * @throws GeneralSecurityException If a security error occurs when creating the socket.
+     */
     private static void runLanternaClient() throws IOException, GeneralSecurityException {
 
         // Create a new terminal screen using the DefaultTerminalFactory.
@@ -174,10 +175,14 @@ public final class ChatClientTuiApp {
         launchChatGui(gui, screen, cfg);
     }
 
-    // This method launches the chat GUI.
-    // It creates a new BasicWindow object to display the chat interface.
-    // It uses a MultiWindowTextGUI object to create the user interface.
-    // The method takes a MultiWindowTextGUI object and a CliConfig object as parameters.
+    /**
+     * launchChatGui(...) creates the chat GUI and starts the client.
+     * It connects to the server and starts two threads: one for sending messages and another for receiving messages.
+     * It uses the Lanterna library to create a text-based user interface (TUI).
+     * @param gui The GUI to update.
+     * @param screen The screen to use.
+     * @param cfg The configuration object containing host, port, user, and token information.
+     */
     private static void launchChatGui(MultiWindowTextGUI gui, Screen screen, CliConfig cfg) {
         try (ChatClient client = new ChatClient(cfg.host(), cfg.port())) {
             Socket socket = client.socket();
@@ -235,15 +240,10 @@ public final class ChatClientTuiApp {
                         setText("");
                         return Result.HANDLED;
                     }
-                    if (k.getKeyType() == KeyType.Escape) {
-                        askQuit(gui, this, socket, screen);
-                        return Result.HANDLED;
-                    }
                     return super.handleKeyStroke(k);
                 }
             }.setPreferredSize(new TerminalSize(COL, 1));
             root.addComponent(input, BorderLayout.Location.BOTTOM);
-            userList.setEnabled(false);
 
             // Create a new TextBox object to display the chat messages.
             // This text box is used to display the chat messages in a multi-line format.
@@ -252,12 +252,36 @@ public final class ChatClientTuiApp {
                                      TextBox.Style.MULTI_LINE) {
                 @Override
                 public Result handleKeyStroke(KeyStroke k) {
-                    Result r = super.handleKeyStroke(k);
-                    gui.getGUIThread().invokeLater(input::takeFocus);
-                    return r;
+                    switch (k.getKeyType()) {
+                        case Tab -> {
+                            gui.getGUIThread().invokeLater(input::takeFocus);
+                            return Result.HANDLED;
+                        }
+                        case ArrowUp, ArrowDown, ArrowLeft, ArrowRight, PageUp, PageDown, Home, End -> {
+                            return super.handleKeyStroke(k);
+                        }
+                        default -> {
+                            // Ignore all other keys.
+                            // This is done to prevent the user from typing in the log box.
+                            return Result.UNHANDLED;
+
+                        }
                     }
-            }.setReadOnly(true);
+                }
+            };
             root.addComponent(log, BorderLayout.Location.CENTER);
+
+            // Press ESC to quit.
+            // This is done to allow the user to quit the application using the ESC key.
+            window.addWindowListener(new WindowListenerAdapter() {
+                @Override
+                public void onUnhandledInput(Window w, KeyStroke k, AtomicBoolean handled) {
+                    if (k.getKeyType() == KeyType.Escape) {
+                        handled.set(true);
+                        askQuit(gui, input, socket, screen);
+                    }
+                }
+            });
 
             // Set root panel to the window.
             // This panel is used to arrange the components in the window.
@@ -272,6 +296,10 @@ public final class ChatClientTuiApp {
             // This is done by sending a "hello" message to the server.
             out.println(ChatMessage.hello(cfg.user(), cfg.token()).toJson());
 
+            // Create a new DrainCtx object to hold the context for draining messages.
+            // This context contains references to the GUI, window, input box, log, and user list.
+            DrainCtx ctx = new DrainCtx(gui, window, input, log, userList, socket, screen);
+
             // Start the message drain loop.
             // This loop reads messages from the server and displays them in the chat interface.
             // It uses a Timer to schedule the message drain operation at regular intervals.
@@ -280,10 +308,8 @@ public final class ChatClientTuiApp {
 
             // Schedule the message drain operation at regular intervals.
             // The drainOnce method is called to read messages from the server and display them in the chat interface.
-            startDrainLoop(gui, guiTimer,
+            startDrainLoop(ctx, guiTimer,
                            inbound,
-                           log,
-                           userList,
                            DRAIN);
 
             // Close the socket when the window is closed.
@@ -351,36 +377,73 @@ public final class ChatClientTuiApp {
     }
 
     /**
+     * DrainCtx is a record that holds the context for draining messages.
+     * It contains references to the GUI, window, input box, log, and user list.
+     * This context is used to update the GUI when messages are received.
+     * It is passed to the drainOnce(...) method to process messages.
+     * @param gui The GUI to update.
+     * @param window The window to close when quitting.
+     * @param input The input box to refocus.
+     * @param log The text box to display chat messages.
+     * @param userList The table to display the user list.
+     * @param socket The socket to close when quitting.
+     * @param screen The screen to stop when quitting.
+     */
+    private record DrainCtx(
+        MultiWindowTextGUI gui,
+        BasicWindow window,
+        TextBox input,
+        TextBox log,
+        Table<String> userList,
+        Socket socket,
+        Screen screen
+    ) { }
+
+    /**
      * drainOnce(...) reads a single message from the queue and updates the GUI.
      * It handles different message types: "text", "roster", and "error".
      * It updates the log and user list accordingly.
      * @param inbound The queue to read from.
-     * @param log The text box to display chat messages.
-     * @param userList The table to display the user list.
-     * @return true if a message was processed, false otherwise.
-     *         This method is used to read messages from the server and update the GUI.
+     * @param ctx The context for draining messages.
      */
     private static boolean drainOnce(BlockingQueue<ChatMessage> inbound,
-                                 TextBox log,
-                                 Table<String> userList) {
-
+                                 DrainCtx ctx) {
         ChatMessage m = inbound.poll();
         if (m == null) {
             return false;
         }
 
+        // Define a delay for error messages.
+        final int delay = 5000;
+
+        // Process the message based on its type.
+        // The message type can be "text", "roster", or "error".
+        // The "text" type is used for regular chat messages.
+        // The "roster" type is used to update the user list.
+        // The "error" type is used to display error messages.
         switch (m.getType()) {
             case "text"   -> {
-                log.addLine(m.getUser() + ": " + m.getBody());
-                log.setCaretPosition(log.getLineCount(), 0);
+                ctx.gui.getGUIThread().invokeLater(() -> {
+                    ctx.log.addLine(m.getUser() + ": " + m.getBody());
+                    ctx.log.setCaretPosition(ctx.log.getLineCount() - 1, 0); // scroll
+                });
             }
             case "roster" -> {
-                userList.getTableModel().clear();
-                m.getUserList().forEach(userList.getTableModel()::addRow);
-                userList.invalidate();
+                ctx.userList.getTableModel().clear();
+                m.getUserList().forEach(ctx.userList.getTableModel()::addRow);
+                ctx.userList.invalidate();
             }
             case "error"  -> {
-                log.addLine("*** " + m.getBody() + " ***");
+                ctx.log.addLine("*** " + m.getBody() + " ***");
+
+                // Exit after 5 seconds.
+                // This is done to allow the user to read the error message before quitting.
+                new Timer("quit-after-error", true)
+                    .schedule(new TimerTask() {
+                        @Override public void run() {
+                            doQuit(ctx.gui(), ctx.socket(), ctx.screen());
+                        }
+                    }, delay);
             }
             default -> { }
         }
@@ -390,36 +453,33 @@ public final class ChatClientTuiApp {
     /**
      * startDrainLoop(...) starts a loop that drains messages from the queue.
      * It uses a Timer to schedule the message drain operation at regular intervals.
-     * @param gui The GUI to update.
+     * @param ctx The context for draining messages.
+     *            This context contains references to the GUI, window, input box, log, and user list.
      * @param timer The timer to use for scheduling.
      *             This timer is used to schedule tasks for future execution in a background thread.
      * @param inbound The queue to read from.
-     * @param log The text box to display chat messages.
-     * @param userList The table to display the user list.
      * @param everyMillis The interval in milliseconds to wait between message drains.
      *                  This is used to control the frequency of message processing.
      */
-    private static void startDrainLoop(MultiWindowTextGUI gui,
+    private static void startDrainLoop(DrainCtx ctx,
                                    Timer timer,
                                    BlockingQueue<ChatMessage> inbound,
-                                   TextBox log,
-                                   Table<String> userList,
                                    int everyMillis) {
 
         Runnable[] taskRef = new Runnable[1];
         taskRef[0] = () -> {
             // Check if there are any messages to process.
             // If there are, process them and update the GUI.
-            if (drainOnce(inbound, log, userList)) {
-                gui.getGUIThread().invokeLater(taskRef[0]);
+            if (drainOnce(inbound, ctx)) {
+                ctx.gui.getGUIThread().invokeLater(taskRef[0]);
             } else {
                 timer.schedule(new TimerTask() {
                     @Override public void run() {
-                        gui.getGUIThread().invokeLater(taskRef[0]);
+                        ctx.gui.getGUIThread().invokeLater(taskRef[0]);
                     }
                 }, everyMillis);
             }
         };
-        gui.getGUIThread().invokeLater(taskRef[0]);
+        ctx.gui.getGUIThread().invokeLater(taskRef[0]);
     }
 }
