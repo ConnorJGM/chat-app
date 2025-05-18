@@ -40,6 +40,10 @@ final class ChatServerHub {
     // This set allows concurrent access from multiple threads.
     private final Set<String> namesInUse = ConcurrentHashMap.newKeySet();
 
+    // Current number game instance.
+    // This instance is used to manage the state of the number guessing game.
+    private NumberGame currentNumberGame;
+
     /**
      * Private constructor to prevent instantiation.
      * This class is not meant to be instantiated; it only contains static methods.
@@ -159,5 +163,45 @@ final class ChatServerHub {
         } catch (IOException e) {
             System.err.println("LOG ERROR: " + e.getMessage());
         }
+    }
+
+    /**
+     * Starts a number guessing game.
+     * This method is called when a player wants to start a new game.
+     * @param owner The name of the player who starts the game.
+     * This method creates a new NumberGame instance and sets it as the current game.
+     * @return A message indicating the game has started or an error message if a game is already in progress.
+     * This method checks if there is already an active game and returns an error message if so.
+     */
+    public synchronized String startNumberGame(String owner) {
+        if (currentNumberGame != null && currentNumberGame.isActive()) {
+            return "A number game is already in progress.";
+        }
+        currentNumberGame = new NumberGame(owner);
+        return currentNumberGame.getStartMessage();
+    }
+
+    /**
+     * Handles a player's guess in the number guessing game.
+     * This method is called when a player makes a guess.
+     * @param player The name of the player making the guess.
+     * @param guess The player's guess.
+     * This method checks the player's guess against the target number.
+     * @return A message indicating whether the guess is too low, too high, or correct.
+     * If the guess is correct, the game is marked as inactive.
+     */
+    public synchronized String checkGuess(String player, int guess) {
+        if (currentNumberGame == null || !currentNumberGame.isActive()) {
+            return null;
+        }
+        String reply = currentNumberGame.checkGuess(player, guess);
+        if (!currentNumberGame.isActive()) {
+            currentNumberGame = null; // Reset the game instance
+        }
+        return reply;
+    }
+
+    public synchronized boolean hasActiveNumberGame() {
+        return currentNumberGame != null && currentNumberGame.isActive();
     }
 }

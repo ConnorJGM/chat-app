@@ -72,6 +72,26 @@ final class ClientHandler implements Runnable {
             String line;
             while ((line = in.readLine()) != null) {
                 ChatMessage msg = ChatMessage.fromJson(line);
+                String body = msg.getBody().trim();
+
+                // Check if the message is a command.
+                if ("start number game".equalsIgnoreCase(body)) {
+                    String startMsg = hub.startNumberGame(msg.getUser());
+                    hub.broadcast(ChatMessage.of("Server", startMsg));
+                    continue;
+                }
+
+                // Check for a guess in the number game.
+                // If the game is active and the message is a number, check the guess.
+                if (hub.hasActiveNumberGame() && body.matches("\\d+")) {
+                    int guess = Integer.parseInt(body);
+                    String reply = hub.checkGuess(msg.getUser(), guess);
+                    if (reply != null) {
+                        hub.broadcast(ChatMessage.of("Server", reply));
+                        continue;
+                    }
+                }
+                // If the message is not a command, broadcast it to all clients.
                 hub.broadcast(msg);
             }
         } catch (IOException ignored) {
