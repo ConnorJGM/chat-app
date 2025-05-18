@@ -5,6 +5,7 @@ package com.connorgillmead.chat.server;
 import com.connorgillmead.chat.common.ChatMessage;
 import java.io.*;
 import java.net.Socket;
+import java.util.Arrays;
 
 /**
  * Handles communication with a single client.
@@ -13,6 +14,9 @@ import java.net.Socket;
  * It implements the Runnable interface to allow it to be run in a separate thread.
  */
 final class ClientHandler implements Runnable {
+    // Instance variables for the ClientHandler class.
+    // The beginIndex is used to extract the question from the poll command.
+    private static final int BEGIN_INDEX = 11;
     private final Socket socket;
     private final ChatServerHub hub;
     private final String username;
@@ -75,6 +79,7 @@ final class ClientHandler implements Runnable {
                 String body = msg.getBody().trim();
 
                 // Check if the message is a command.
+                // The command format is "start number game".
                 if ("start number game".equalsIgnoreCase(body)) {
                     String startMsg = hub.startNumberGame(msg.getUser());
                     hub.broadcast(ChatMessage.of("Server", startMsg));
@@ -91,6 +96,38 @@ final class ClientHandler implements Runnable {
                         continue;
                     }
                 }
+
+                // Check if the message is a command to start a poll.
+                // The command format is "start poll: question | option1 | option2 | ...".
+                if (body.toLowerCase().startsWith("start poll:")) {
+                    String[] parts = body.substring(BEGIN_INDEX).split("\\|");
+                    String question = parts[0].trim();
+                    String[] options = Arrays.stream(parts, 1, parts.length)
+                            .map(String::trim)
+                            .toArray(String[]::new);
+                    String reply = hub.startPoll(msg.getUser(), question, options);
+                    hub.broadcast(ChatMessage.of("Server", reply));
+                    continue;
+                }
+
+                // Check for a vote in the poll.
+                // If the poll is active and the message is a number, cast the vote.
+                if (hub.hasActivePoll() && body.matches("\\d+")) {
+                    int vote = Integer.parseInt(body);
+                    String voteReply = hub.vote(msg.getUser(), vote);
+                    hub.broadcast(ChatMessage.of("Server", voteReply));
+                    continue;
+                }
+
+                // Check if the message is a command to finish the poll.
+                // The command format is "finish poll".
+                if ("finish poll".equalsIgnoreCase(body)) {
+                    String reply = hub.finish(msg.getUser());
+                    hub.broadcast(ChatMessage.of("Server", reply));
+                    continue;
+                }
+
+
                 // If the message is not a command, broadcast it to all clients.
                 hub.broadcast(msg);
             }

@@ -44,6 +44,10 @@ final class ChatServerHub {
     // This instance is used to manage the state of the number guessing game.
     private NumberGame currentNumberGame;
 
+    // Current poll instance.
+    // This instance is used to manage the state of the poll.
+    private Poll currentPoll;
+
     /**
      * Private constructor to prevent instantiation.
      * This class is not meant to be instantiated; it only contains static methods.
@@ -203,5 +207,65 @@ final class ChatServerHub {
 
     public synchronized boolean hasActiveNumberGame() {
         return currentNumberGame != null && currentNumberGame.isActive();
+    }
+
+    /**
+     * Starts a poll.
+     * This method is called when a player wants to start a new poll.
+     * @param owner The name of the player who starts the poll.
+     * This method creates a new Poll instance and sets it as the current poll.
+     * @param question The question for the poll.
+     * @param options The options for the poll.
+     * This method checks if there is already an active poll and returns an error message if so.
+     * @return A message indicating the poll has started or an error message if a poll is already in progress.
+     * This method checks if there is already an active poll and returns an error message if so.
+     */
+    public synchronized String startPoll(String owner, String question, String... options) {
+        if (currentPoll != null && currentPoll.isActive()) {
+            return "A poll is already in progress.";
+        }
+        currentPoll = new Poll(owner, question, options);
+        return currentPoll.getStartMessage();
+    }
+
+    /**
+     * Handles a player's vote in the poll.
+     * This method is called when a player votes in the poll.
+     * @param voter The name of the player making the vote.
+     * @param option The option chosen by the player.
+     * This method checks if the poll is active and if the option is valid.
+     * @return A message indicating the result of the vote or
+     * an error message if the poll is closed or the option is invalid.
+     * This method checks if the poll is active and if the option is valid.
+     */
+    public synchronized String vote(String voter, int option) {
+        if (currentPoll == null || !currentPoll.isActive()) {
+            return "No active poll.";
+        }
+        return currentPoll.vote(voter, option);
+    }
+
+    /**
+     * Finishes the poll.
+     * This method is called when the poll owner wants to finish the poll.
+     * @return A message indicating the results of the poll or an error message if there is no active poll.
+     * This method checks if the poll is active and if the owner is the one who started the poll.
+     */
+    public synchronized String finish(String requester) {
+        if (currentPoll == null || !currentPoll.isActive()) {
+            return "No active poll.";
+        }
+        if (!currentPoll.getOwner().equals(requester)) {
+            return "Only " + currentPoll.getOwner() + " can finish the poll.";
+        }
+        String results = currentPoll.finish();
+        currentPoll = null;
+        return results;
+    }
+
+    // Checks if there is an active poll.
+    // This method checks if the current poll is not null and if it is active.
+    public synchronized boolean hasActivePoll() {
+        return currentPoll != null && currentPoll.isActive();
     }
 }
