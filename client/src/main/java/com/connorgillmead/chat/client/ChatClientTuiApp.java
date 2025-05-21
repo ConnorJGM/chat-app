@@ -21,7 +21,9 @@ import com.googlecode.lanterna.gui2.table.Table;
 import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.input.KeyType;
 import com.googlecode.lanterna.screen.Screen;
+import com.googlecode.lanterna.screen.TerminalScreen;
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
+import com.googlecode.lanterna.terminal.swing.AWTTerminalFrame;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
@@ -44,10 +46,11 @@ public final class ChatClientTuiApp {
 
     // Variables for the terminal size and message drain interval.
     // These are used to set the size of the text box and the interval for draining messages from the queue.
-    private static final int COL = 80;
-    private static final int COL_LOG = 60;
+    private static final int COL_LOG = 100;
     private static final int COL_LIST = 20;
-    private static final int ROW = 20;
+    private static final int COL = COL_LOG + COL_LIST + 4;
+    private static final int ROW = 60;
+    private static final int ROW_LIST = ROW + 4;
     private static final int DRAIN = 100;
 
     // Private constructor to prevent instantiation.
@@ -82,11 +85,29 @@ public final class ChatClientTuiApp {
 
         // Create a new terminal screen using the DefaultTerminalFactory.
         // This is used to create a text-based user interface (TUI).
-        Screen screen = new DefaultTerminalFactory()
+        AWTTerminalFrame frame = new DefaultTerminalFactory()
                             .setTerminalEmulatorTitle("Chat Client")
-                            .createScreen();
+                            .setInitialTerminalSize(new TerminalSize(COL, ROW_LIST))
+                            .createAWTTerminal();
+
+        frame.pack();
+        frame.setVisible(true);
+        frame.setLocationRelativeTo(null);
+
+        Screen screen = new TerminalScreen(frame);
         screen.startScreen();
+
         MultiWindowTextGUI gui = new MultiWindowTextGUI(screen);
+
+        // Resize the window when the terminal is resized.
+        frame.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                gui.getGUIThread().invokeLater(() -> {
+                    screen.doResizeIfNecessary();
+                });
+            }
+        });
 
         // Create a holder for the config.
         // This is used to store the configuration details entered by the user.
@@ -149,6 +170,18 @@ public final class ChatClientTuiApp {
             }
         });
 
+        // Press ESC to quit.
+        // This is done to allow the user to quit the application using the ESC key.
+        configWindow.addWindowListener(new WindowListenerAdapter() {
+            @Override
+            public void onUnhandledInput(Window w, KeyStroke k, AtomicBoolean handled) {
+                if (k.getKeyType() == KeyType.Escape) {
+                    handled.set(true);
+                    askQuit(gui, configWindow, null, null, screen);
+                }
+            }
+        });
+
         // Add empty space and the connect button to the form.
         // This is done to separate the components in the form.
         form.addComponent(
@@ -167,12 +200,16 @@ public final class ChatClientTuiApp {
         // Block until the user clicks connect.
         gui.addWindowAndWait(configWindow);
 
+        // Fit the window to the content.
+        frame.pack();
+        screen.doResizeIfNecessary();
+
         // Get the config from the holder.
         // This is the configuration details entered by the user.
         CliConfig cfg = configHolder.get();
 
         // Launch the chat GUI.
-        launchChatGui(gui, screen, cfg);
+        launchChatGui(gui, screen, cfg, frame);
     }
 
     /**
@@ -183,7 +220,7 @@ public final class ChatClientTuiApp {
      * @param screen The screen to use.
      * @param cfg The configuration object containing host, port, user, and token information.
      */
-    private static void launchChatGui(MultiWindowTextGUI gui, Screen screen, CliConfig cfg) {
+    private static void launchChatGui(MultiWindowTextGUI gui, Screen screen, CliConfig cfg, AWTTerminalFrame frame) {
         try (ChatClient client = new ChatClient(cfg.host(), cfg.port())) {
             Socket socket = client.socket();
 
@@ -225,7 +262,6 @@ public final class ChatClientTuiApp {
                     1,
                     1)
             );
-
             root.addComponent(side, BorderLayout.Location.RIGHT);
 
             // Handles input from the user.
@@ -236,7 +272,7 @@ public final class ChatClientTuiApp {
                         String msg = getText().trim();
                         if ("quit".equalsIgnoreCase(msg)) {
                             gui.getGUIThread().invokeLater(() -> {
-                                askQuit(gui, this, socket, screen);
+                                askQuit(gui, null, this, socket, screen);
                             });
                         } else if (!msg.isEmpty()) {
                             out.println(ChatMessage.of(cfg.user(), msg).toJson());
@@ -282,7 +318,7 @@ public final class ChatClientTuiApp {
                 public void onUnhandledInput(Window w, KeyStroke k, AtomicBoolean handled) {
                     if (k.getKeyType() == KeyType.Escape) {
                         handled.set(true);
-                        askQuit(gui, input, socket, screen);
+                        askQuit(gui, window, input, socket, screen);
                     }
                 }
             });
@@ -290,7 +326,10 @@ public final class ChatClientTuiApp {
             // Set root panel to the window.
             // This panel is used to arrange the components in the window.
             window.setComponent(root);
-            gui.addWindow(window);
+
+            // Set the size of the window.
+            frame.pack();
+            screen.doResizeIfNecessary();
 
             // Focus on the input box.
             // This is done to allow the user to start typing immediately.
@@ -345,12 +384,18 @@ public final class ChatClientTuiApp {
                                Socket socket,
                                Screen screen) {
         try {
-            socket.close();
+            if (socket != null) {
+                socket.close();
+            }
         } catch (IOException ignored) { }
         try {
-            screen.stopScreen();
+            if (screen != null) {
+                screen.stopScreen();
+            }
         } catch (IOException ignored) { }
-        gui.getGUIThread().invokeLater(() -> System.exit(0));
+        new Thread(() -> {
+            System.exit(0);
+        }).start();
     }
 
     /**
@@ -364,7 +409,7 @@ public final class ChatClientTuiApp {
      * @param screen The screen to stop.
      *              This screen is used to display the chat interface.
      */
-    private static void askQuit(MultiWindowTextGUI gui, TextBox input, Socket socket, Screen screen) {
+    private static void askQuit(MultiWindowTextGUI gui, Window window, TextBox input, Socket socket, Screen screen) {
         MessageDialogButton ans = new MessageDialogBuilder()
             .setTitle("Quit")
             .setText("Are you sure you want to quit?")
@@ -374,8 +419,11 @@ public final class ChatClientTuiApp {
             .showDialog(gui);
 
         if (ans == MessageDialogButton.Yes) {
+            if (window != null) {
+                window.close();
+            }
             doQuit(gui, socket, screen);
-        } else {
+        } else if (input != null) {
             gui.getGUIThread().invokeLater(input::takeFocus);
         }
     }
