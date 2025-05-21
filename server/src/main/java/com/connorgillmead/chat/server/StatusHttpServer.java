@@ -52,13 +52,30 @@ final class StatusHttpServer {
         // It calculates the uptime of the server by subtracting the start time from the current time.
         // The uptime is displayed in a human-readable format using the Duration class.
         // The user count is obtained from the ChatServerHub instance.
-        // The response is sent as plain text with a MIME type of "text/plain".
-        http.createContext("/", new PageHandler(() ->
-                  "Uptime : "
-                + Duration.ofMillis(System.currentTimeMillis() - startMillis)
-                + System.lineSeparator()
-                + "Users  : " + hub.userCount(),
-                  "text/plain"));
+        // The status page is generated using a StringBuilder to construct the HTML response.
+        http.createContext("/", new PageHandler(() -> {
+            Duration duration = Duration.ofMillis(System.currentTimeMillis() - startMillis);
+            String uptime = formatDuration(duration);
+            int userCount = hub.userCount();
+            StringBuilder html = new StringBuilder();
+            html.append(htmlHeader("Chat Server Status"));
+            html.append("""
+                <div class = "d-flex flex-column justify-center align-items-center"
+                style = "min-height: 60vh">
+                    <div class = "card mb-4 w-75 mx-auto" style = "min-height: 60vh;">
+                        <div class = "card-body d-flex flex-column justify-content-center align-items-center"
+                        style = "height: 80%%;">
+                            <h2 class = "card-title">Dashboard</h2>
+                            <p class = "card-text"><strong>Uptime: </strong> %s</p>
+                            <p class = "card-text"><strong>Connected Users:</strong> %d</p>
+                            <a href = "/users" class = "btn btn-primary mt-3">View Connected Users</a>
+                        </div>
+                    </div>
+                </div>
+                """.formatted(uptime, userCount));
+            html.append(htmlFooter());
+            return html.toString();
+        }, "text/html"));
 
         // /users – list of connected users in HTML format.
         // This context handles requests to the "/users" URL and provides a list of connected users in HTML format.
@@ -66,9 +83,49 @@ final class StatusHttpServer {
         // The list of usernames is obtained from the ChatServerHub instance.
         // Each username is added to an unordered list (<ul>) in the HTML response.
         http.createContext("/users", new PageHandler(() -> {
-            StringBuilder html = new StringBuilder("<h1>Connected users</h1><ul>");
-            hub.getUsernames().forEach(u -> html.append("<li>").append(u).append("</li>"));
-            html.append("</ul>");
+            StringBuilder html = new StringBuilder();
+            html.append(htmlHeader("Connected Users"));
+            html.append("""
+                <div class = "d-flex flex-column justify-content-center align-items-center"
+                style = "min-height: 60vh">
+                    <h2>Connected Users</h2>
+                        <table class = "table table-bordered w-100 text-center mx-auto mb-4">
+                            <tbody>
+                """);
+
+            // Create a table to display the usernames.
+            // The table has a maximum of 4 columns, and the usernames are displayed in rows.
+            // The number of rows is calculated based on the total number of users and the maximum number of columns.
+            // Each username is displayed in a table cell (<td>).
+            // If there are no users, an empty cell is displayed.
+            // The table is styled with Bootstrap classes for better appearance.
+            final int maxCol = 4;
+            var usernames = hub.getUsernames().toArray(new String[0]);
+            int totalUsers = usernames.length;
+            int numRows = Math.max(2, (int) Math.ceil(totalUsers / (double) maxCol));
+            int userIndex = 0;
+            for (int row = 0; row < numRows; row++) {
+                html.append("<tr>");
+                for (int col = 0; col < maxCol; col++) {
+                    if (userIndex < totalUsers) {
+                        html.append("<td class = \"text-center align-middle bg-info text-dark fw-bold\" "
+                                    + "style = \"min-height = 3rem;\">")
+                            .append(usernames[userIndex++])
+                            .append("</td>");
+                    } else {
+                        html.append("<td class = \"bg-light\" style = \"min-height: 3rem; \"></td>");
+                    }
+                }
+                html.append("</tr>");
+            }
+
+            html.append("""
+                                </tbody>
+                            </table>
+                            <a href = "/" class = "btn btn-secondary">Back to Status Page</a>
+                        </div>
+                """);
+            html.append(htmlFooter());
             return html.toString();
         }, "text/html"));
 
@@ -128,5 +185,91 @@ final class StatusHttpServer {
         try (OutputStream os = ex.getResponseBody()) {
             os.write(bytes);
         }
+    }
+
+    /**
+     * Generates the HTML header for the response.
+     * This method creates the HTML header with the specified title.
+     * It includes the necessary meta tags and links to Bootstrap CSS for styling.
+     * @param title The title of the HTML page.
+     * @return The HTML header as a string.
+     */
+    private static String htmlHeader(String title) {
+        return String.format("""
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <title>%s</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+                rel="stylesheet">
+                <style>
+                    html, body {
+                        height: 100%%;
+                    }
+                    body {
+                        min-height: 100vh;
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    main.container {
+                        flex: 1 0 auto;
+                    }
+                    footer {
+                        flex-shrink: 0;
+                    }
+                </style>
+            </head>
+            <body>
+                <header class="bg-primary text-white text-center py-3 mb-4">
+                    <h1>Chat Server Status</h1>
+                </header>
+                <main class="container">
+            """, title);
+    }
+
+    /**
+     * Generates the HTML footer for the response.
+     * This method creates the HTML footer with a copyright notice.
+     * @return The HTML footer as a string.
+     */
+    private static String htmlFooter() {
+        return """
+                </main>
+                <footer class = "bg-light text-center py-3 mt-4 border-top">
+                    <small>&copy; Connor Gill-Mead 2025</small>
+                </footer>
+            </body>
+            </html>
+            """;
+    }
+
+    /**
+     * Formats a Duration object into a human-readable string.
+     * This method takes a Duration object and converts it into a string representation
+     * @param d The Duration object to format.
+     * @return A string representation of the duration in a human-readable format.
+     */
+    private static String formatDuration(Duration d) {
+        final int totalHours = 24;
+        final int totalOther = 60;
+
+        long days = d.toDays();
+        long hours = d.toHours() % totalHours;
+        long minutes = d.toMinutes() % totalOther;
+        long seconds = d.getSeconds() % totalOther;
+        StringBuilder sb = new StringBuilder();
+        if (days > 0) {
+            sb.append(days).append(" Days ");
+        }
+        if (hours > 0 || days > 0) {
+            sb.append(hours).append(" Hours ");
+        }
+        if (minutes > 0 || hours > 0 || days > 0) {
+            sb.append(minutes).append(" Minutes ");
+        }
+        sb.append(seconds).append(" Seconds");
+        return sb.toString();
     }
 }
