@@ -57,6 +57,7 @@ final class ChatServerHub {
         clients.add(c);
         append(String.format("[%s] JOIN %s",
                Instant.now(), c.getUsername()));
+        broadcast(ChatMessage.userList(getUsernames()));
     }
 
     /**
@@ -69,6 +70,7 @@ final class ChatServerHub {
         clients.remove(c);
         append(String.format("[%s] LEAVE %s",
                Instant.now(), c.getUsername()));
+        broadcast(ChatMessage.userList(getUsernames()));
     }
 
     /**
@@ -111,16 +113,8 @@ final class ChatServerHub {
         // Append the message to the log file.
         append(msg.toJson());
 
-        // Switch statement to handle different message types.
-        // The switch statement checks the type of the message and performs actions accordingly.
-        switch (msg.getType()) {
-            case "text", "hello", "bye" ->
-                // Send the message to all clients.
-                clients.forEach(c -> c.send(msg));
-            default -> {
-                System.err.println("Unknown message type: " + msg.getType());
-            }
-        }
+        // Send ALL messages to all clients
+        clients.forEach(c -> c.send(msg));
     }
 
     /**

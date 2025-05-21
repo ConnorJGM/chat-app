@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.util.List;
 import java.util.Scanner;
 
 /**
@@ -31,6 +32,19 @@ public record CliConfig(String host, int port, String user, String token) {
      */
     private static final int DEFAULT_PORT = 5555;
     private static final int MAX_PORT = 65535;
+
+    // Static variable to store the last roster of connected users.
+    // This is used to keep track of the last known list of connected users.
+    private static volatile List<String> lastRoster = List.of();
+    private static volatile boolean intialRosterShown;
+
+    /**
+     * Returns the last received roster (list of users).
+     * @return List of usernames, or null if no roster has been received yet.
+     */
+    public static List<String> getLastRoster() {
+        return lastRoster;
+    }
 
     /**
      * Creates a new CliConfig object from command-line arguments.
@@ -152,7 +166,7 @@ public record CliConfig(String host, int port, String user, String token) {
     * It runs in a separate thread to allow for concurrent message sending and receiving.
     * The thread will continue to run until the socket is closed or an I/O error occurs.
     */
-    public static void startReader(Socket socket) {
+    public static void startReader(Socket socket, String user) {
 
         // Create a new thread to read messages from the server.
         new Thread(() -> {
@@ -174,8 +188,11 @@ public record CliConfig(String host, int port, String user, String token) {
                     // If the message is a roster update, print the list of connected users.
                     // Otherwise, print the message body and sender.
                     if ("roster".equals(m.getType())) {
-                        System.out.println("Connected users: "
-                            + String.join(", ", m.getUserList()));
+                        lastRoster = m.getUserList();
+                        if (!intialRosterShown && lastRoster.contains(user)) {
+                            System.out.println("Connected users: " + String.join(", ", lastRoster));
+                            intialRosterShown = true;
+                        }
                     } else {
                         System.out.printf("%s: %s%n", m.getUser(), m.getBody());
                     }

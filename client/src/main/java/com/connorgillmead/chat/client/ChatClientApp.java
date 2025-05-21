@@ -62,7 +62,7 @@ public final class ChatClientApp {
                 );
 
             // Start a new thread to read messages from the server.
-            CliConfig.startReader(socket);
+            CliConfig.startReader(socket, cfg.user());
 
             // Notify the server that the user has joined the chat.
             out.println(ChatMessage.hello(cfg.user(), cfg.token()).toJson());
@@ -77,6 +77,19 @@ public final class ChatClientApp {
                 // This allows the user to leave the chat gracefully.
                 if ("quit".equalsIgnoreCase(text.trim())) {
                     break;
+                }
+
+                // If the user enters "list users", display the list of connected users.
+                // This command is used to show the current users in the chat.
+                if ("list users".equalsIgnoreCase(text.trim())) {
+                    System.out.println("Connected users: " + String.join(", ", CliConfig.getLastRoster()));
+                    continue;
+                }
+
+                // If the user enters nothing, continue to the next iteration.
+                // This prevents sending empty messages to the server.
+                if (text.isEmpty()) {
+                    continue;
                 }
 
                 // Messages are sent to the server in JSON format.
