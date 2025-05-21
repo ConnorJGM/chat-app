@@ -127,6 +127,31 @@ final class ClientHandler implements Runnable {
                     continue;
                 }
 
+                // Check if the message is a help command.
+                // The command format is "help".
+                if ("help".equalsIgnoreCase(body)) {
+                    String helpText = """
+                            Available commands:
+                            • help                                            - Show this help message.
+                            • start number game                               - Start a number guessing game.
+                            • start poll: question | option1 | option2 | ...  - Start a poll.
+                            • finish poll                                     - Finish the current poll.
+                            • list users                                      - List all connected users.
+                            • quit                                            - Disconnect from the chat.
+                            """;
+                    // Send the help message to the client.
+                    // The help message is formatted as a JSON object.
+                    send(ChatMessage.of("Server", helpText));
+                    continue;
+                }
+
+                // Check if the message is a command to list users.
+                // The command format is "list users".
+                if ("list users".equalsIgnoreCase(body)) {
+                    var users = hub.getUsernames();
+                    send(ChatMessage.userList(users));
+                    continue;
+                }
 
                 // If the message is not a command, broadcast it to all clients.
                 hub.broadcast(msg);

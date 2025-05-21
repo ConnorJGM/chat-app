@@ -234,7 +234,11 @@ public final class ChatClientTuiApp {
                 @Override public Result handleKeyStroke(KeyStroke k) {
                     if (k.getKeyType() == KeyType.Enter) {
                         String msg = getText().trim();
-                        if (!msg.isEmpty()) {
+                        if ("quit".equalsIgnoreCase(msg)) {
+                            gui.getGUIThread().invokeLater(() -> {
+                                askQuit(gui, this, socket, screen);
+                            });
+                        } else if (!msg.isEmpty()) {
                             out.println(ChatMessage.of(cfg.user(), msg).toJson());
                         }
                         setText("");

@@ -171,12 +171,14 @@ public record CliConfig(String host, int port, String user, String token) {
                         System.exit(1);
                     }
 
-                    // Ignore roster messages in CLI mode.
+                    // If the message is a roster update, print the list of connected users.
+                    // Otherwise, print the message body and sender.
                     if ("roster".equals(m.getType())) {
-                        continue;
+                        System.out.println("Connected users: "
+                            + String.join(", ", m.getUserList()));
+                    } else {
+                        System.out.printf("%s: %s%n", m.getUser(), m.getBody());
                     }
-
-                    System.out.printf("%s: %s%n", m.getUser(), m.getBody());
                 }
             } catch (IOException ignored) {
             }
