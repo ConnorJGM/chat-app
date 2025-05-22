@@ -48,6 +48,10 @@ final class ChatServerHub {
     // This instance is used to manage the state of the poll.
     private Poll currentPoll;
 
+    // Creates a token for the chat server.
+    // This token is used to authenticate clients and manage their sessions.
+    private String token;
+
     /**
      * Private constructor to prevent instantiation.
      * This class is not meant to be instantiated; it only contains static methods.
@@ -59,6 +63,7 @@ final class ChatServerHub {
                Instant.now(), c.getUsername()));
         broadcast(ChatMessage.userList(getUsernames()));
     }
+
 
     /**
      * Removes a client from the chat server.
@@ -83,6 +88,15 @@ final class ChatServerHub {
      */
     boolean reserveName(String user) {
         return namesInUse.add(user.toLowerCase());
+    }
+
+    /**
+     * Gets the token for the chat server.
+     * This method is called to retrieve the token used for authentication.
+     * @return The token for the chat server.
+     */
+    public String getToken() {
+        return token;
     }
 
     /**
@@ -113,8 +127,12 @@ final class ChatServerHub {
         // Append the message to the log file.
         append(msg.toJson());
 
-        // Send ALL messages to all clients
-        clients.forEach(c -> c.send(msg));
+        // Send to all TCP clients.
+        for (ClientHandler handler : clients) {
+            handler.send(msg);
+        }
+        // Send to all WebSocket clients.
+        StatusHttpServer.WebSocketChatEndpoint.sendToAll(msg);
     }
 
     /**

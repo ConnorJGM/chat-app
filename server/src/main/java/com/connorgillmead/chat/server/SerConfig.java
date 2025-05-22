@@ -3,6 +3,7 @@
 package com.connorgillmead.chat.server;
 
 import com.connorgillmead.chat.common.ChatMessage;
+import jakarta.websocket.DeploymentException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -34,6 +35,10 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
     // Default port number for the chat server.
     // This is the port number that the server will listen on for incoming connections.
     private static final int DEFAULT_PORT = 5555;
+
+    // Default listener port for the ancillary server.
+    // This is the port number that the ancillary server will listen on for incoming WebSocket connections.
+    private static final int LISTENER_PORT = 8081;
 
     /**
      * Creates a new SerConfig object from command-line arguments.
@@ -152,9 +157,25 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
      * @throws IOException If an I/O error occurs when starting the HTTP server.
      *                     This may happen if the server cannot bind to the specified port.
      */
-    public static ChatServerHub startAncillaryServer(SerConfig cfg) throws IOException {
+    public static ChatServerHub startAncillaryServer(SerConfig cfg) throws IOException, DeploymentException {
         ChatServerHub hub = new ChatServerHub();
         StatusHttpServer.start(hub);
+
+        // Start the WebSocket server.
+        // The WebSocket server is used to provide real-time updates to connected clients.
+        StatusHttpServer.WebSocketChatEndpoint.attachHub(hub);
+        org.glassfish.tyrus.server.Server wsServer =
+            new org.glassfish.tyrus.server.Server(
+                "localhost", LISTENER_PORT, "/", null,
+                StatusHttpServer.WebSocketChatEndpoint.class
+            );
+        try {
+            wsServer.start();
+            System.out.println("WebSocket server started at ws://localhost:8081/wschat");
+        } catch (DeploymentException e) {
+            e.printStackTrace();
+            throw e;
+        }
 
         // Append the server start message to the log.
         // This message indicates that the server has started successfully and is listening for connections.

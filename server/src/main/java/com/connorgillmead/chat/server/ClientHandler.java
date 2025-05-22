@@ -5,7 +5,6 @@ package com.connorgillmead.chat.server;
 import com.connorgillmead.chat.common.ChatMessage;
 import java.io.*;
 import java.net.Socket;
-import java.util.Arrays;
 
 /**
  * Handles communication with a single client.
@@ -13,13 +12,11 @@ import java.util.Arrays;
  * processing them, and sending responses back to the client.
  * It implements the Runnable interface to allow it to be run in a separate thread.
  */
-final class ClientHandler implements Runnable {
+public class ClientHandler implements Runnable {
     // Instance variables for the ClientHandler class.
-    // The beginIndex is used to extract the question from the poll command.
-    private static final int BEGIN_INDEX = 11;
     private final Socket socket;
     private final ChatServerHub hub;
-    private final String username;
+    private String username;
     private PrintWriter out;
 
     /**
@@ -37,6 +34,16 @@ final class ClientHandler implements Runnable {
     }
 
     /**
+     * Sets the username of the client.
+     * This method is used to update the username of the client for web.
+     *
+     * @param username The new username of the client.
+     */
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    /**
      * Returns the username of the client.
      * This method is used to identify the client in the chat.
      *
@@ -50,7 +57,16 @@ final class ClientHandler implements Runnable {
      * Returns the socket representing the connection to the client.
      * This method is used to get the socket for sending messages to the client.
      *
-     * @return The socket of the client.
+     * @return The socket representing the connection to the client.
+     */
+    ChatServerHub getHub() {
+        return hub;
+    }
+
+    /**
+     * Returns the socket representing the connection to the client.
+     * This method is used to get the socket for sending messages to the client.
+     *
      */
     @Override
     public void run() {
@@ -76,80 +92,10 @@ final class ClientHandler implements Runnable {
             String line;
             while ((line = in.readLine()) != null) {
                 ChatMessage msg = ChatMessage.fromJson(line);
-                String body = msg.getBody().trim();
 
-                // Check if the message is a command.
-                // The command format is "start number game".
-                if ("start number game".equalsIgnoreCase(body)) {
-                    String startMsg = hub.startNumberGame(msg.getUser());
-                    hub.broadcast(ChatMessage.of("Server", startMsg));
-                    continue;
-                }
-
-                // Check for a guess in the number game.
-                // If the game is active and the message is a number, check the guess.
-                if (hub.hasActiveNumberGame() && body.matches("\\d+")) {
-                    int guess = Integer.parseInt(body);
-                    String reply = hub.checkGuess(msg.getUser(), guess);
-                    if (reply != null) {
-                        hub.broadcast(ChatMessage.of("Server", reply));
-                        continue;
-                    }
-                }
-
-                // Check if the message is a command to start a poll.
-                // The command format is "start poll: question | option1 | option2 | ...".
-                if (body.toLowerCase().startsWith("start poll:")) {
-                    String[] parts = body.substring(BEGIN_INDEX).split("\\|");
-                    String question = parts[0].trim();
-                    String[] options = Arrays.stream(parts, 1, parts.length)
-                            .map(String::trim)
-                            .toArray(String[]::new);
-                    String reply = hub.startPoll(msg.getUser(), question, options);
-                    hub.broadcast(ChatMessage.of("Server", reply));
-                    continue;
-                }
-
-                // Check for a vote in the poll.
-                // If the poll is active and the message is a number, cast the vote.
-                if (hub.hasActivePoll() && body.matches("\\d+")) {
-                    int vote = Integer.parseInt(body);
-                    String voteReply = hub.vote(msg.getUser(), vote);
-                    hub.broadcast(ChatMessage.of("Server", voteReply));
-                    continue;
-                }
-
-                // Check if the message is a command to finish the poll.
-                // The command format is "finish poll".
-                if ("finish poll".equalsIgnoreCase(body)) {
-                    String reply = hub.finish(msg.getUser());
-                    hub.broadcast(ChatMessage.of("Server", reply));
-                    continue;
-                }
-
-                // Check if the message is a help command.
+                // Check commands via help command.
                 // The command format is "help".
-                if ("help".equalsIgnoreCase(body)) {
-                    String helpText = """
-                            Available commands:
-                            • help                                            - Show this help message.
-                            • start number game                               - Start a number guessing game.
-                            • start poll: question | option1 | option2 | ...  - Start a poll.
-                            • finish poll                                     - Finish the current poll.
-                            • list users                                      - List all connected users.
-                            • quit                                            - Disconnect from the chat.
-                            """;
-                    // Send the help message to the client.
-                    // The help message is formatted as a JSON object.
-                    send(ChatMessage.of("Server", helpText));
-                    continue;
-                }
-
-                // Check if the message is a command to list users.
-                // The command format is "list users".
-                if ("list users".equalsIgnoreCase(body)) {
-                    var users = hub.getUsernames();
-                    send(ChatMessage.userList(users));
+                if (CommandHelper.command(msg, hub, this)) {
                     continue;
                 }
 

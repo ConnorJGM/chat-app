@@ -2,6 +2,7 @@
 
 package com.connorgillmead.chat.server;
 
+import jakarta.websocket.DeploymentException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
@@ -24,7 +25,6 @@ public final class ChatServerApp {
      * @throws GeneralSecurityException If a security error occurs when creating the server socket.
      */
     public static void main(String[] args) throws IOException, GeneralSecurityException {
-
         // Parse command line arguments and create a SerConfig object.
         // The SerConfig class is responsible for handling server configuration.
         SerConfig cfg = SerConfig.argumentPrompt(SerConfig.parseArgs(args));
@@ -42,19 +42,18 @@ public final class ChatServerApp {
             // The ChatServerHub is responsible for broadcasting messages to all connected clients.
             ChatServerHub hub = SerConfig.startAncillaryServer(cfg);
 
-            // Print the server's host, port, and token (if provided) to the console.
-            // This information is useful for clients to connect to the server.
-            System.out.printf("Starting server on %s:%d  token = %s%n",
-                  cfg.host(), cfg.port(),
-                  cfg.token() == null ? "<none>" : cfg.token());
+            // Print the server information to the console.
+            // The server information includes the host, port, and token (if any).
+            System.out.printf("Web server (HTTP/WebSocket) running at http://%s:8080/\n", cfg.host());
+            System.out.printf("WebSocket endpoint at ws://%s:8081/wschat\n", cfg.host());
+            System.out.printf("Chat server running on %s:%d  token = %s\n",
+                cfg.host(), cfg.port(), cfg.token() == null ? "<none>" : cfg.token());
 
-            // Accept incoming connections and create a new ClientHandler for each client.
-            // The ClientHandler is responsible for handling communication with a single client.
             SerConfig.acceptLoop(cfg, hub, tcp);
 
-        // Connection aborted.
-        // The try-with-resources statement automatically closes the server socket when done.
-        } catch (IOException e) {
+            // Wait for user input to terminate the server.
+            System.in.read();
+        } catch (DeploymentException | IOException e) {
             System.err.println("Connection aborted.");
         }
     }
