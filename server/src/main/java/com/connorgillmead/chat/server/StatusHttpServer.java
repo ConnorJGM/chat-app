@@ -31,44 +31,30 @@ import org.glassfish.grizzly.http.server.Response;
  */
 final class StatusHttpServer {
 
-    // The port number for the HTTP server.
-    // This is a static final field, meaning it is a constant value that does not change.
-    private static final int PORT_HTTP      = 8080;
-
-    // The HTTP status code for BAD REQUEST (400).
+    // Constants for HTTP server configuration.
+    // These constants define the port number for the HTTP server and various HTTP status codes.
+    private static final int PORT_HTTP = 8080;
     private static final int HTTP_STATUS_BAD_REQUEST = 400;
-
-    // The HTTP status code for METHOD NOT ALLOWED (405).
     private static final int HTTP_METHOD_NOT_ALLOWED = 405;
+    private static final int HTTP_FORBIDDEN = 403;
 
-    // Utility class constructor.
-    // This constructor is private to prevent instantiation of the class.
     private StatusHttpServer() { }
 
     /**
-     * Starts the HTTP server on port 8080.
-     * @param hub The chat server hub that manages connected users.
-     * @throws IOException If an I/O error occurs when creating the server or handling requests.
+     * Creates an HTTP handler for the root endpoint (`/`).
+     * This handler generates an HTML page displaying the server's status, including uptime and user count.
+     * @param hub The ChatServerHub instance that manages chat functionality.
+     * @param startMillis The start time of the server in milliseconds.
+     * @return An HttpHandler that handles requests to the root endpoint.
      */
-    static HttpServer start(ChatServerHub hub) throws IOException {
-        HttpServer server = HttpServer.createSimpleServer(null, PORT_HTTP);
-
-        // The start time of the server in milliseconds.
-        // This variable is used to calculate the uptime of the server.
-        long startMillis = System.currentTimeMillis();
-
-        // / – status page with uptime and user count.
-        // This context handles requests to the root URL ("/") and provides a status page.
-        // It calculates the uptime of the server by subtracting the start time from the current time.
-        // The uptime is displayed in a human-readable format using the Duration class.
-        // The user count is obtained from the ChatServerHub instance.
-        // The status page is generated using a StringBuilder to construct the HTML response.
-        server.getServerConfiguration().addHttpHandler(new HttpHandler() {
+    private static HttpHandler createRootHandler(ChatServerHub hub, long startMillis) {
+        return new HttpHandler() {
             @Override
             public void service(Request request, Response response) throws IOException {
                 Duration duration = Duration.ofMillis(System.currentTimeMillis() - startMillis);
                 String uptime = formatDuration(duration);
                 int userCount = hub.userCount();
+
                 StringBuilder html = new StringBuilder();
                 html.append(htmlHeader("Chat Server Status"));
                 html.append("""
@@ -79,24 +65,28 @@ final class StatusHttpServer {
                             style = "height: 80%%;">
                                 <h2 class = "card-title">Dashboard</h2>
                                 <p class = "card-text"><strong>Uptime: </strong> %s</p>
-                                <p class = "card-text"><strong>Connected Users:</strong> %d</p>
+                                <p class = "card-text"><strong>Connected Users: </strong> %d</p>
                                 <a href = "/users" class = "btn btn-primary mt-3">View Connected Users</a>
                             </div>
                         </div>
                     </div>
                     """.formatted(uptime, userCount));
                 html.append(htmlFooter());
+
                 response.setContentType("text/html; charset=utf-8");
                 response.getWriter().write(html.toString());
             }
-        }, "/");
+        };
+    }
 
-        // /users – list of connected users in HTML format.
-        // This context handles requests to the "/users" URL and provides a list of connected users in HTML format.
-        // It uses a StringBuilder to construct the HTML response.
-        // The list of usernames is obtained from the ChatServerHub instance.
-        // Each username is added to an unordered list (<ul>) in the HTML response.
-        server.getServerConfiguration().addHttpHandler(new HttpHandler() {
+    /**
+     * Creates an HTTP handler for the `/users` endpoint.
+     * This handler generates an HTML page displaying the list of connected users in a table format.
+     * @param hub The ChatServerHub instance that manages chat functionality.
+     * @return An HttpHandler that handles requests to the `/users` endpoint.
+     */
+    private static HttpHandler createUsersHandler(ChatServerHub hub) {
+        return new HttpHandler() {
             @Override
             public void service(Request request, Response response) throws IOException {
                 StringBuilder html = new StringBuilder();
@@ -109,28 +99,22 @@ final class StatusHttpServer {
                                 <tbody>
                     """);
 
-                // Create a table to display the usernames.
-                // The table has a maximum of 4 columns, and the usernames are displayed in rows.
-                // The number of rows is calculated based on the total number of users
-                // and the maximum number of columns.
-                // Each username is displayed in a table cell (<td>).
-                // If there are no users, an empty cell is displayed.
-                // The table is styled with Bootstrap classes for better appearance.
                 final int maxCol = 4;
                 var usernames = hub.getUsernames().toArray(new String[0]);
                 int totalUsers = usernames.length;
                 int numRows = Math.max(2, (int) Math.ceil(totalUsers / (double) maxCol));
                 int userIndex = 0;
+
                 for (int row = 0; row < numRows; row++) {
                     html.append("<tr>");
                     for (int col = 0; col < maxCol; col++) {
                         if (userIndex < totalUsers) {
                             html.append("<td class = \"text-center align-middle bg-info text-dark fw-bold\" "
-                                        + "style = \"min-height = 3rem;\">")
+                                        + "style = \"min-height: 3rem;\">")
                                 .append(usernames[userIndex++])
                                 .append("</td>");
                         } else {
-                            html.append("<td class = \"bg-light\" style = \"min-height: 3rem; \"></td>");
+                            html.append("<td class = \"bg-light\" style = \"min-height: 3rem;\"></td>");
                         }
                     }
                     html.append("</tr>");
@@ -143,16 +127,21 @@ final class StatusHttpServer {
                             </div>
                     """);
                 html.append(htmlFooter());
+
                 response.setContentType("text/html; charset=utf-8");
                 response.getWriter().write(html.toString());
             }
-        }, "/users");
+        };
+    }
 
-        // /chat – chat page with WebSocket connection.
-        // This context handles requests to the "/chat" URL and provides a chat page with a WebSocket connection.
-        // The chat page is generated using a StringBuilder to construct the HTML response.
-        // The chat page includes a form for entering the username and token (if required).
-        server.getServerConfiguration().addHttpHandler(new HttpHandler() {
+    /**
+     * Creates an HTTP handler for the `/chat` endpoint.
+     * This handler serves the HTML page for the chat interface.
+     * @param hub The ChatServerHub instance that manages chat functionality.
+     * @return An HttpHandler that handles requests to the `/chat` endpoint.
+     */
+    private static HttpHandler createChatHandler(ChatServerHub hub) {
+        return new HttpHandler() {
             @Override
             public void service(Request request, Response response) throws IOException {
                 if ("GET".equalsIgnoreCase(String.valueOf(request.getMethod()))) {
@@ -164,17 +153,18 @@ final class StatusHttpServer {
                     response.setStatus(HTTP_METHOD_NOT_ALLOWED);
                 }
             }
-        }, "/chat");
+        };
+    }
 
-        // WebSocket endpoint for chat messages.
-        // This endpoint handles WebSocket connections and messages.
-        WebSocketChatEndpoint.attachHub(hub);
-
-        // /send – HTTP POST endpoint for sending chat messages.
-        // This context handles POST requests to the "/send" URL and sends chat messages to the WebSocket endpoint.
-        // It reads the form data from the request body and parses it into a map of parameters.
-        // The parameters include the username and message body.
-        server.getServerConfiguration().addHttpHandler(new HttpHandler() {
+    /**
+     * Creates an HTTP handler for the `/send` endpoint.
+     * This handler processes POST requests to send chat messages.
+     * It validates the request parameters and broadcasts the message to all connected users.
+     * @param hub The ChatServerHub instance that manages chat functionality.
+     * @return An HttpHandler that handles requests to the `/send` endpoint.
+     */
+    private static HttpHandler createSendHandler(ChatServerHub hub) {
+        return new HttpHandler() {
             @Override
             public void service(Request request, Response response) throws IOException {
                 if ("POST".equalsIgnoreCase(String.valueOf(request.getMethod()))) {
@@ -183,6 +173,13 @@ final class StatusHttpServer {
 
                     String user = params.get("user");
                     String body = params.get("body");
+
+                    String suppliedToken = request.getParameter("token");
+                    if (hub.getToken() != null && !hub.getToken().isBlank()
+                        && !hub.getToken().equals(suppliedToken)) {
+                        response.setStatus(HTTP_FORBIDDEN);
+                        return;
+                    }
 
                     if (user != null && body != null && !user.isBlank() && !body.isBlank()) {
                         ChatMessage msg = ChatMessage.of(user, body);
@@ -199,10 +196,33 @@ final class StatusHttpServer {
                     response.setStatus(HTTP_METHOD_NOT_ALLOWED);
                 }
             }
-        }, "/send");
+        };
+    }
 
-        // Start the server on port 8080.
-        // The server is started with a backlog of 0, which means it will use the default backlog size.
+    /**
+     * Starts the HTTP server with the specified ChatServerHub.
+     * This method initializes the HTTP server, registers handlers for various endpoints,
+     * and starts the server to listen for incoming requests.
+     * @param hub The ChatServerHub instance that manages chat functionality.
+     * @return The started HttpServer instance.
+     * @throws IOException If an I/O error occurs while starting the server.
+    */
+    static HttpServer start(ChatServerHub hub) throws IOException {
+        HttpServer server = HttpServer.createSimpleServer(null, PORT_HTTP);
+        long startMillis = System.currentTimeMillis();
+
+        // Register HTTP handlers for various endpoints.
+        // The root handler serves the status page, while the other handlers serve specific functionalities.
+        server.getServerConfiguration().addHttpHandler(createRootHandler(hub, startMillis), "/");
+        server.getServerConfiguration().addHttpHandler(createUsersHandler(hub), "/users");
+        server.getServerConfiguration().addHttpHandler(createChatHandler(hub), "/chat");
+        server.getServerConfiguration().addHttpHandler(createSendHandler(hub), "/send");
+
+        // Attach the WebSocket endpoint to the hub.
+        // This allows the WebSocket endpoint to access the ChatServerHub instance for broadcasting messages.
+        WebSocketChatEndpoint.attachHub(hub);
+
+        // Start the HTTP server.
         server.start();
         return server;
     }
@@ -227,6 +247,8 @@ final class StatusHttpServer {
                 <style>
                     html, body {
                         height: 100%%;
+                        margin: 0;
+                        padding: 0;
                     }
                     body {
                         min-height: 100vh;
@@ -234,6 +256,9 @@ final class StatusHttpServer {
                         flex-direction: column;
                     }
                     main.container {
+                        width: 80%%;
+                        max-width: 80%%;
+                        margin: 0 auto;
                         flex: 1 0 auto;
                     }
                     footer {
@@ -321,13 +346,13 @@ final class StatusHttpServer {
             </head>
             <body class="bg-light">
                 <div class="container py-4">
-                    <div class="row justify-content-center">
-                        <div class="col-md-8 col-lg-6">
-                            <div class="card shadow">
+                    <div class="row gx-2">
+                        <div class="col-md-8">
+                            <div class="card shadow mb-3">
                                 <div class="card-body">
                                     <h2 class="card-title text-center mb-4">Web Chat</h2>
                                     <div id="chatlog" class="mb-3"></div>
-                                    <form class="row g-2 mb-3" onsubmit="connect(); return false;">
+                                    <form id="connectForm" class="row g-2 mb-3" onsubmit="connect(); return false;">
                                         <div class="col-5">
                                             <input type="text" id="user" class="form-control"
                                             placeholder="Username" required>
@@ -354,6 +379,14 @@ final class StatusHttpServer {
                                 </div>
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <div class="card shadow">
+                                <div class="card-body">
+                                    <h5 class="card-title">Connected Users</h5>
+                                    <ul id="userList" class="list-group"></ul>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <script>
@@ -370,22 +403,35 @@ final class StatusHttpServer {
                         document.getElementById("token").readOnly = true;
                     };
                     ws.onmessage = function(event) {
-                        let m = JSON.parse(event.data);
-                        if (m.body) {
-                            let line = document.createElement("div");
-                            line.textContent = (m.user ? m.user : "Server") + ": " + m.body;
-                            document.getElementById("chatlog").appendChild(line);
-                            document.getElementById("chatlog").scrollTop =
-                            document.getElementById("chatlog").scrollHeight;
-                        }
-                    };
-                    ws.onclose = function() {
-                        document.getElementById("chatArea").style.display = "none";
-                        document.getElementById("connectBtn").disabled = false;
-                        document.getElementById("user").readOnly = false;
-                        document.getElementById("token").readOnly = false;
-                    };
-                }
+                        const m = JSON.parse(event.data);
+                        switch(m.type) {
+                            case "roster":
+                                const ul = document.getElementById("userList");
+                                ul.innerHTML = "";
+                                (m.users||[]).forEach(u => {
+                                    const li = document.createElement("li");
+                                    li.textContent = u;
+                                    li.className = "list-group-item";
+                                    ul.appendChild(li);
+                                });
+                                break;
+                             case "text":
+                                const log = document.getElementById("chatlog");
+                                const div = document.createElement("div");
+                                div.textContent = `${m.user}: ${m.body}`;
+                                log.appendChild(div);
+                                log.scrollTop = log.scrollHeight;
+                                break;
+                            }
+                        };
+                        ws.onclose = function() {
+                            document.getElementById("chatArea").style.display = "none";
+                            document.getElementById("connectBtn").disabled = false;
+                            document.getElementById("user").readOnly = false;
+                            document.getElementById("token").readOnly = false;
+                        };
+                    }
+
                 function sendMsg() {
                     let body = document.getElementById("body").value;
                     if (!body || ws.readyState !== WebSocket.OPEN) return;
@@ -459,26 +505,33 @@ final class StatusHttpServer {
                     return;
                 }
 
-                // Check if the username is already in use or if the token is invalid.
-                // If the username is already in use, close the session.
+                // Required token validation.
+                // If the server requires a token, check if the provided token matches the required token.
                 String requiredToken = hub.getToken();
-                if (!hub.reserveName(msg.getUser())
-                    || requiredToken != null && !requiredToken.isBlank() && !requiredToken.equals(msg.getToken())) {
+                if (requiredToken != null && !requiredToken.isBlank() && !requiredToken.equals(msg.getToken())) {
+                    System.out.println("WebSocket: Invalid or missing token for user: " + msg.getUser());
+                    session.close();
+                    return;
+                }
+
+
+                // Check if the username is already in use.
+                // If the username is already in use, close the session.
+                if (!hub.reserveName(msg.getUser())) {
                     System.out.println("WebSocket: Username already in use: " + msg.getUser());
                     session.close();
                     return;
                 }
 
-                // If the token is required and not provided or invalid, close the session.
-                if (requiredToken != null && !requiredToken.isBlank() && !requiredToken.equals(msg.getToken())) {
-                    System.out.println("WebSocket: Invalid token for user: " + msg.getUser());
-                    session.close();
-                    return;
-                }
-
+                // Set the username and authenticated status for the handler.
                 handler.setUsername(msg.getUser());
                 handler.setAuthenticated(true);
-                hub.broadcast(msg);
+                hub.getHistory().forEach(handler::send);
+
+                // Broadcast the "hello" message to all connected clients.
+                ChatMessage hello = ChatMessage.hello(msg.getUser(), null);
+                hub.broadcast(hello);
+                hub.broadcast(ChatMessage.userList(hub.getUsernames()));
                 return;
             }
 
@@ -504,6 +557,7 @@ final class StatusHttpServer {
             if (handler != null) {
                 hub.releaseName(handler.getUsername());
                 hub.removeClient(handler);
+                hub.broadcast(ChatMessage.userList(hub.getUsernames()));
             }
         }
 

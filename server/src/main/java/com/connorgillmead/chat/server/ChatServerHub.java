@@ -86,8 +86,23 @@ final class ChatServerHub {
      * @return True if the name was successfully reserved, false if it was already in use.
      * This method checks if the username is already in use by another client.
      */
-    boolean reserveName(String user) {
-        return namesInUse.add(user.toLowerCase());
+    synchronized boolean reserveName(String user) {
+        for (String u : namesInUse) {
+            if (u.equalsIgnoreCase(user)) {
+                return false;
+            }
+        }
+        namesInUse.add(user);
+        return true;
+    }
+
+    /**
+     * Sets the token for the chat server.
+     * This method is called to set the token used for authentication.
+     * @param token The token to set for the chat server.
+     */
+    public void setToken(String token) {
+        this.token = token;
     }
 
     /**
@@ -105,9 +120,9 @@ final class ChatServerHub {
      * @param user The username to release.
      * This method removes the username from the set of names in use.
      */
-    void releaseName(String user) {
+    synchronized void releaseName(String user) {
         if (user != null) {
-            namesInUse.remove(user.toLowerCase());
+            namesInUse.removeIf(u -> u.equalsIgnoreCase(user));
         }
     }
 
@@ -154,10 +169,9 @@ final class ChatServerHub {
     // Returns a list of usernames of connected clients.
     // This method returns a sorted list of usernames obtained from the set of connected clients.
     List<String> getUsernames() {
-        return clients.stream()
-                      .map(ClientHandler::getUsername)
-                      .sorted(String::compareToIgnoreCase)
-                      .toList();
+        return namesInUse.stream()
+            .sorted(String::compareToIgnoreCase)
+            .toList();
     }
 
     /**

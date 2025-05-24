@@ -52,7 +52,6 @@ public class WebHandler extends ClientHandler implements Closeable {
      * Returns the username of the client.
      * This method is used to identify the client in the chat.
      *
-     * @return The username of the client.
      */
     public void setUsername(String username) {
         super.setUsername(username);

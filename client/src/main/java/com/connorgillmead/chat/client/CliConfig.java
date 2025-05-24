@@ -3,6 +3,7 @@
 package com.connorgillmead.chat.client;
 
 import com.connorgillmead.chat.common.ChatMessage;
+import com.google.gson.JsonSyntaxException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -177,8 +178,12 @@ public record CliConfig(String host, int port, String user, String token) {
                 // Read messages from the server in a loop.
                 // Each message is expected to be in JSON format.
                 while ((line = in.readLine()) != null) {
-                    ChatMessage m = ChatMessage.fromJson(line);
-
+                    ChatMessage m;
+                    try {
+                        m = ChatMessage.fromJson(line);
+                    } catch (JsonSyntaxException | IllegalStateException e) {
+                        continue;
+                    }
                     // Exit application if authentication fails.
                     if ("error".equals(m.getType())) {
                         System.err.println("Server refused connection: " + m.getBody());

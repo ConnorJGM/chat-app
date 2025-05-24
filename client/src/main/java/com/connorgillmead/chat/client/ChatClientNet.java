@@ -3,6 +3,7 @@
 package com.connorgillmead.chat.client;
 
 import com.connorgillmead.chat.common.ChatMessage;
+import com.google.gson.JsonSyntaxException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -39,7 +40,12 @@ final class ChatClientNet {
                 new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             while ((line = in.readLine()) != null) {
-                queue.put(ChatMessage.fromJson(line));
+                try {
+                    ChatMessage m = ChatMessage.fromJson(line);
+                    queue.put(m);
+                } catch (JsonSyntaxException | IllegalStateException e) {
+                    continue;
+                }
             }
         } catch (SocketException e) {
         } catch (IOException | InterruptedException e) {

@@ -78,13 +78,35 @@ public class ClientHandler implements Runnable {
             // The 'true' argument enables auto-flushing (output stream flushed).
             out = new PrintWriter(socket.getOutputStream(), true);
 
-            // Display chat history to the client.
+            // If the username is not set, read the first message from the client.
+            // This is typically the "hello" message sent by the client to identify itself.
+            if (this.username == null) {
+                String firstLine = in.readLine();
+                if (firstLine == null) {
+                    socket.close();
+                    return;
+                }
+                ChatMessage firstMsg = ChatMessage.fromJson(firstLine);
+                if (!"hello".equals(firstMsg.getType())) {
+                    out.println(ChatMessage.error("Must send 'hello' first"));
+                    socket.close();
+                    return;
+                }
+                String serverToken = hub.getToken();
+                if (serverToken != null && !serverToken.isBlank()
+                    && !serverToken.equals(firstMsg.getToken())) {
+                    out.println(ChatMessage.error("Invalid token"));
+                    socket.close();
+                    return;
+                }
+                this.username = firstMsg.getUser();
+                hub.broadcast(firstMsg);
+            }
+
+            // Get history and user list from the hub.
+            // The history is sent to the client to show previous messages.
             hub.getHistory().forEach(this::send);
-
-            // Create new thread for the client and add it to the hub.
             hub.addClient(this);
-
-            // Send the list of connected users to the client.
             send(ChatMessage.userList(hub.getUsernames()));
 
             // Read messages from the client and broadcast them to all clients.
@@ -92,13 +114,11 @@ public class ClientHandler implements Runnable {
             String line;
             while ((line = in.readLine()) != null) {
                 ChatMessage msg = ChatMessage.fromJson(line);
-
                 // Check commands via help command.
                 // The command format is "help".
                 if (CommandHelper.command(msg, hub, this)) {
                     continue;
                 }
-
                 // If the message is not a command, broadcast it to all clients.
                 hub.broadcast(msg);
             }
