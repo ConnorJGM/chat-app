@@ -468,6 +468,21 @@ public final class ChatClientTuiApp {
         // Define a delay for error messages.
         final int delay = 5000;
 
+        // If the user is kicked, show a dialog and quit.
+        // This is done to notify the user that they have been kicked from the chat.
+        if (m.isKick()) {
+            ctx.gui.getGUIThread().invokeLater(() -> {
+                new MessageDialogBuilder()
+                    .setTitle("Kicked")
+                    .setText(m.getBody())
+                    .addButton(MessageDialogButton.OK)
+                    .build()
+                    .showDialog(ctx.gui);
+                doQuit(ctx.gui(), ctx.socket(), ctx.screen());
+            });
+            return true;
+        }
+
         // Process the message based on its type.
         // The message type can be "text", "roster", or "error".
         // The "text" type is used for regular chat messages.

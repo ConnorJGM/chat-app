@@ -201,6 +201,13 @@ public record CliConfig(String host, int port, String user, String token) {
                     } else {
                         System.out.printf("%s: %s%n", m.getUser(), m.getBody());
                     }
+
+                    // If the user is kicked, print the message body and exit the application.
+                    // This is used to notify the user that they have been kicked from the chat.
+                    if (m.isKick()) {
+                        System.out.println(m.getBody());
+                        System.exit(0);
+                    }
                 }
             } catch (IOException ignored) {
             }

@@ -54,6 +54,7 @@ public final class ChatServerApp {
             // Wait for user input to terminate the server.
             System.in.read();
         } catch (DeploymentException | IOException e) {
+            e.printStackTrace();
             System.err.println("Connection aborted.");
         }
     }

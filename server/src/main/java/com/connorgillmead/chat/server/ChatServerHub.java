@@ -10,6 +10,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -176,6 +177,28 @@ final class ChatServerHub {
         return namesInUse.stream()
             .sorted(String::compareToIgnoreCase)
             .toList();
+    }
+
+    /**
+     * Kicks a client from the chat server.
+     * This method is called to disconnect a client by their username.
+     * @param username The username of the client to kick.
+     * This method iterates through both TCP and WebSocket clients to find the client with the specified username.
+     */
+    public synchronized void kickClient(String username) {
+        Iterator<ClientHandler> it = clients.iterator();
+        while (it.hasNext()) {
+            ClientHandler ch = it.next();
+            if (username.equals(ch.getUsername())) {
+                if (ch instanceof WebHandler web) {
+                    web.close();
+                } else {
+                    ch.disconnect();
+                }
+                it.remove();
+                break;
+            }
+        }
     }
 
     /**

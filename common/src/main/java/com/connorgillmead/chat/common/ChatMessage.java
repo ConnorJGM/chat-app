@@ -118,6 +118,33 @@ public final class ChatMessage {
     }
 
     /**
+     * Creates a new ChatMessage object with the specified notice.
+     * This message type is used to notify users of a kick event.
+     * The "kick" message type is used to indicate that a user has been kicked from the chat.
+     *
+     * @param notice The notice message to be sent to the user.
+     * @return A new ChatMessage object with the specified notice.
+     */
+    public static ChatMessage kick(String notice) {
+        ChatMessage m = new ChatMessage();
+        m.type = "kick";
+        m.user = "Server";
+        m.body = notice;
+        m.time = System.currentTimeMillis();
+        return m;
+    }
+
+    /**
+     * Checks if the message type is "kick".
+     * This method is used to determine if the message is a kick notification.
+     *
+     * @return true if the message type is "kick", false otherwise.
+     */
+    public boolean isKick() {
+        return "kick".equals(type);
+    }
+
+    /**
      * Creates a new ChatMessage object with the specified list of users.
      * This message type is used to send the list of connected users to the client.
      *

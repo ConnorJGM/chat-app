@@ -139,12 +139,35 @@ final class StatusHttpServer {
                                                     const td = document.createElement('td');
                                                     td.className = 'text-center align-middle bg-info text-dark fw-bold';
                                                     td.style.minHeight = '3rem';
-                                                    td.textContent = idx < users.length ? users[idx] : '';
+                                                    if (idx < users.length) {
+                                                        const user = users[idx];
+                                                        td.innerHTML = user
+                                                            + ' <button class="btn btn-danger btn-sm ms-2" '
+                                                            + 'onclick="kickUser(\\'' + user + '\\')">Kick</button>';
+                                                    }
                                                     tr.appendChild(td);
                                                 }
                                                 tb.appendChild(tr);
                                             }
                                         });
+                                }
+                                function kickUser(u) {
+                                    fetch('/kick', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/x-www-form-urlencoded'
+                                        },
+                                        body: 'user=' + encodeURIComponent(u)
+                                    })
+                                    .then(r => {
+                                        return r.text();
+                                    })
+                                    .then(text => {
+                                        refreshUsers();
+                                    })
+                                    .catch(err => {
+                                        console.error("Error kicking user:", err);
+                                    });
                                 }
                                 setInterval(refreshUsers, 1000);
                                 refreshUsers();
@@ -242,6 +265,7 @@ final class StatusHttpServer {
         server.getServerConfiguration().addHttpHandler(createChatHandler(hub), "/chat");
         server.getServerConfiguration().addHttpHandler(createSendHandler(hub), "/send");
         server.getServerConfiguration().addHttpHandler(createStatusJsonHandler(hub, startMillis), "/status.json");
+        server.getServerConfiguration().addHttpHandler(createKickHandler(hub), "/kick");
 
         // Attach the WebSocket endpoint to the hub.
         // This allows the WebSocket endpoint to access the ChatServerHub instance for broadcasting messages.
@@ -416,41 +440,62 @@ final class StatusHttpServer {
                     </div>
                 </div>
                 <script>
-                let ws, user, token;
-                function connect() {
-                    user = document.getElementById("user").value;
-                    token = document.getElementById("token").value;
-                    ws = new WebSocket("ws://" + location.hostname + ":8081/wschat");
-                    ws.onopen = function() {
-                        ws.send(JSON.stringify({type: "hello", user: user, token: token}));
-                        document.getElementById("chatArea").style.display = "";
-                        document.getElementById("connectBtn").disabled = true;
-                        document.getElementById("user").readOnly = true;
-                        document.getElementById("token").readOnly = true;
-                    };
-                    ws.onmessage = function(event) {
-                        const m = JSON.parse(event.data);
-                        switch(m.type) {
-                            case "roster":
-                                const ul = document.getElementById("userList");
-                                ul.innerHTML = "";
-                                (m.users||[]).forEach(u => {
-                                    const li = document.createElement("li");
-                                    li.textContent = u;
-                                    li.className = "list-group-item";
-                                    ul.appendChild(li);
-                                });
-                                break;
-                             case "text":
-                                const log = document.getElementById("chatlog");
-                                const div = document.createElement("div");
-                                div.textContent = `${m.user}: ${m.body}`;
-                                log.appendChild(div);
-                                log.scrollTop = log.scrollHeight;
-                                break;
+                    let ws, user, token;
+                    let kicked = false;
+
+                    function connect() {
+                        user = document.getElementById("user").value;
+                        token = document.getElementById("token").value;
+                        ws = new WebSocket("ws://" + location.hostname + ":8081/wschat");
+
+                        ws.onopen = function() {
+                            ws.send(JSON.stringify({type: "hello", user: user, token: token}));
+                            document.getElementById("chatArea").style.display = "";
+                            document.getElementById("connectBtn").disabled = true;
+                            document.getElementById("user").readOnly = true;
+                            document.getElementById("token").readOnly = true;
+                        };
+
+                        ws.onmessage = function(event) {
+                            const m = JSON.parse(event.data);
+                            switch(m.type) {
+                                case "roster": {
+                                    const ul = document.getElementById("userList");
+                                    ul.innerHTML = "";
+                                    (m.users||[]).forEach(u => {
+                                        const li = document.createElement("li");
+                                        li.textContent = u;
+                                        li.className = "list-group-item";
+                                        ul.appendChild(li);
+                                    });
+                                    break;
+                                }
+                                case "text": {
+                                    const log = document.getElementById("chatlog");
+                                    const div = document.createElement("div");
+                                    div.textContent = `${m.user}: ${m.body}`;
+                                    log.appendChild(div);
+                                    log.scrollTop = log.scrollHeight;
+                                    break;
+                                }
+                                case "kick": {
+                                    const log = document.getElementById("chatlog");
+                                    const div = document.createElement("div");
+                                    div.textContent = m.body;
+                                    div.className = "text-danger fw-bold";
+                                    log.appendChild(div);
+                                    kicked = true;
+                                    ws.close();
+                                    break;
+                                }
                             }
                         };
+
                         ws.onclose = function() {
+                            if (kicked) {
+                                document.getElementById("chatArea").style.display = "none";
+                                return;
+                            }
                             document.getElementById("chatArea").style.display = "none";
                             document.getElementById("connectBtn").disabled = false;
                             document.getElementById("user").readOnly = false;
@@ -461,13 +506,12 @@ final class StatusHttpServer {
                             document.getElementById("userList").innerHTML = "";
                         };
                     }
-
-                function sendMsg() {
-                    let body = document.getElementById("body").value;
-                    if (!body || ws.readyState !== WebSocket.OPEN) return;
-                    ws.send(JSON.stringify({type: "text", user: user, body: body}));
-                    document.getElementById("body").value = "";
-                }
+                    function sendMsg() {
+                        let body = document.getElementById("body").value;
+                        if (!body || ws.readyState !== WebSocket.OPEN) return;
+                        ws.send(JSON.stringify({type: "text", user: user, body: body}));
+                        document.getElementById("body").value = "";
+                    }
                 </script>
             </body>
             </html>
@@ -504,6 +548,59 @@ final class StatusHttpServer {
                 );
                 res.setContentType("application/json; charset=utf-8");
                 res.getWriter().write(json);
+            }
+        };
+    }
+
+    /**
+     * Creates an HTTP handler for the `/kick` endpoint.
+     * This handler processes POST requests to kick a user from the chat server.
+     * It validates the request parameters and removes the specified user from the chat.
+     * @param hub The ChatServerHub instance that manages chat functionality.
+     * @return An HttpHandler that handles requests to the `/kick` endpoint.
+     */
+    private static HttpHandler createKickHandler(ChatServerHub hub) {
+        return new HttpHandler() {
+            @Override
+            public void service(Request req, Response res) throws IOException {
+                if (!"POST".equalsIgnoreCase(String.valueOf(req.getMethod()))) {
+                    res.setStatus(HTTP_METHOD_NOT_ALLOWED);
+                    return;
+                }
+
+                String body = new String(req.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                Map<String, String> params = parseFormData(body);
+                String user = params.get("user");
+
+                if (user == null || user.isBlank()) {
+                    res.setStatus(HTTP_STATUS_BAD_REQUEST);
+                    res.getWriter().write("User parameter is required.");
+                    return;
+                }
+
+                WebSocketChatEndpoint.SESSIONS.stream()
+                    .filter(s -> {
+                        WebHandler wh = WebSocketChatEndpoint.HANDLER_MAP.get(s);
+                        return wh != null && user.equals(wh.getUsername());
+                    })
+                    .findFirst()
+                    .ifPresent(s -> {
+                        WebHandler wh = WebSocketChatEndpoint.HANDLER_MAP.get(s);
+                        wh.send(ChatMessage.kick("You have been kicked from the chat server."));
+                        hub.kickClient(user);
+                        try {
+                            s.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
+
+                hub.kickClient(user);
+
+                res.setContentType("text/plain; charset=utf-8");
+                String resp = "Kicked: " + user;
+                res.setContentLength(resp.getBytes(StandardCharsets.UTF_8).length);
+                res.getWriter().write(resp);
             }
         };
     }
@@ -610,7 +707,6 @@ final class StatusHttpServer {
                 hub.releaseName(handler.getUsername());
                 hub.removeClient(handler);
             }
-            SESSIONS.remove(session);
         }
 
         /**

@@ -145,4 +145,16 @@ public class ClientHandler implements Runnable {
     void send(ChatMessage msg) {
         out.println(msg.toJson());
     }
+
+    /**
+     * Closes the connection to the client.
+     * This method is called to close the socket and release any associated resources.
+     */
+    public void disconnect() {
+        try {
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
