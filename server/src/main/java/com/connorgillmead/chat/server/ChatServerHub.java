@@ -139,12 +139,16 @@ final class ChatServerHub {
         }
         history.addLast(msg);
 
-        // Append the message to the log file.
-        append(msg.toJson());
+        // Append the message to the log file if not "roster".
+        if (!"roster".equals(msg.getType())) {
+            append(msg.toJson());
+        }
 
         // Send to all TCP clients.
         for (ClientHandler handler : clients) {
-            handler.send(msg);
+            if (!(handler instanceof WebHandler)) {
+                handler.send(msg);
+            }
         }
         // Send to all WebSocket clients.
         StatusHttpServer.WebSocketChatEndpoint.sendToAll(msg);

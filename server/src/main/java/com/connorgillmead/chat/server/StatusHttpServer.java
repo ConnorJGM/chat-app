@@ -64,8 +64,28 @@ final class StatusHttpServer {
                             <div class = "card-body d-flex flex-column justify-content-center align-items-center"
                             style = "height: 80%%;">
                                 <h2 class = "card-title">Dashboard</h2>
-                                <p class = "card-text"><strong>Uptime: </strong> %s</p>
-                                <p class = "card-text"><strong>Connected Users: </strong> %d</p>
+                                <p class = "card-text"><strong>Uptime: </strong>
+                                    <span id="uptime">%s</span></p>
+                                <p class = "card-text"><strong>Connected Users: </strong>
+                                    <span id="userCount"> %d</span></p>
+                                <script>
+                                    function refreshStatus() {
+                                        fetch('/status.json')
+                                            .then(r => r.json())
+                                            .then(data => {
+                                                let sec = Math.floor(data.uptime / 1000),
+                                                    h = Math.floor(sec / 3600),
+                                                    m = Math.floor((sec %% 3600) / 60),
+                                                    s2 = sec %% 60;
+                                                document.getElementById('uptime').textContent =
+                                                    `${h}h ${m}m ${s2}s`;
+                                                document.getElementById('userCount').textContent =
+                                                    data.users;
+                                            });
+                                    }
+                                    setInterval(refreshStatus, 1000);
+                                    refreshStatus();
+                                </script>
                                 <a href = "/users" class = "btn btn-primary mt-3">View Connected Users</a>
                             </div>
                         </div>
@@ -95,39 +115,43 @@ final class StatusHttpServer {
                     <div class = "d-flex flex-column justify-content-center align-items-center"
                     style = "min-height: 60vh">
                         <h2>Connected Users</h2>
-                            <table class = "table table-bordered w-100 text-center mx-auto mb-4">
+                            <table id="usersTable"
+                                    class = "table table-bordered w-100 text-center mx-auto mb-4">
                                 <tbody>
-                    """);
 
-                final int maxCol = 4;
-                var usernames = hub.getUsernames().toArray(new String[0]);
-                int totalUsers = usernames.length;
-                int numRows = Math.max(2, (int) Math.ceil(totalUsers / (double) maxCol));
-                int userIndex = 0;
-
-                for (int row = 0; row < numRows; row++) {
-                    html.append("<tr>");
-                    for (int col = 0; col < maxCol; col++) {
-                        if (userIndex < totalUsers) {
-                            html.append("<td class = \"text-center align-middle bg-info text-dark fw-bold\" "
-                                        + "style = \"min-height: 3rem;\">")
-                                .append(usernames[userIndex++])
-                                .append("</td>");
-                        } else {
-                            html.append("<td class = \"bg-light\" style = \"min-height: 3rem;\"></td>");
-                        }
-                    }
-                    html.append("</tr>");
-                }
-
-                html.append("""
-                                    </tbody>
-                                </table>
-                                <a href = "/" class = "btn btn-secondary">Back to Status Page</a>
-                            </div>
+                                </tbody>
+                            </table>
+                            <a href = "/" class = "btn btn-secondary">Back to Status Page</a>
+                            <script>
+                                function refreshUsers() {
+                                    fetch('/status.json')
+                                        .then(r => r.json())
+                                        .then(data => {
+                                            const users = data.userList || data.users || [];
+                                            const maxCol = 4;
+                                            const tb = document.querySelector('#usersTable tbody');
+                                            tb.innerHTML = '';
+                                            const numRows = Math.max(2, Math.ceil(users.length / maxCol));
+                                            for (let row=0; row<numRows; row++) {
+                                                const tr = document.createElement('tr');
+                                                for (let col=0; col<maxCol; col++) {
+                                                    const idx = row*maxCol + col;
+                                                    const td = document.createElement('td');
+                                                    td.className = 'text-center align-middle bg-info text-dark fw-bold';
+                                                    td.style.minHeight = '3rem';
+                                                    td.textContent = idx < users.length ? users[idx] : '';
+                                                    tr.appendChild(td);
+                                                }
+                                                tb.appendChild(tr);
+                                            }
+                                        });
+                                }
+                                setInterval(refreshUsers, 1000);
+                                refreshUsers();
+                            </script>
+                        </div>
                     """);
                 html.append(htmlFooter());
-
                 response.setContentType("text/html; charset=utf-8");
                 response.getWriter().write(html.toString());
             }
@@ -217,6 +241,7 @@ final class StatusHttpServer {
         server.getServerConfiguration().addHttpHandler(createUsersHandler(hub), "/users");
         server.getServerConfiguration().addHttpHandler(createChatHandler(hub), "/chat");
         server.getServerConfiguration().addHttpHandler(createSendHandler(hub), "/send");
+        server.getServerConfiguration().addHttpHandler(createStatusJsonHandler(hub, startMillis), "/status.json");
 
         // Attach the WebSocket endpoint to the hub.
         // This allows the WebSocket endpoint to access the ChatServerHub instance for broadcasting messages.
@@ -341,6 +366,7 @@ final class StatusHttpServer {
                         margin-bottom: 1em;
                         padding: 0.5em;
                         background: #f8f9fa;
+                        white-space: pre-wrap;
                     }
                 </style>
             </head>
@@ -429,6 +455,10 @@ final class StatusHttpServer {
                             document.getElementById("connectBtn").disabled = false;
                             document.getElementById("user").readOnly = false;
                             document.getElementById("token").readOnly = false;
+                            document.getElementById("user").value = "";
+                            document.getElementById("token").value = "";
+                            document.getElementById("chatlog").innerHTML = "";
+                            document.getElementById("userList").innerHTML = "";
                         };
                     }
 
@@ -461,6 +491,23 @@ final class StatusHttpServer {
         } return map;
     }
 
+    private static HttpHandler createStatusJsonHandler(ChatServerHub hub, long startMillis) {
+        return new HttpHandler() {
+            @Override
+            public void service(Request req, Response res) throws IOException {
+                long uptime = System.currentTimeMillis() - startMillis;
+                int users = hub.userCount();
+                String listJson = new com.google.gson.Gson().toJson(hub.getUsernames());
+                String json = String.format(
+                    "{\"uptime\":%d, \"users\":%d, \"userList\":%s}",
+                    uptime, users, listJson
+                );
+                res.setContentType("application/json; charset=utf-8");
+                res.getWriter().write(json);
+            }
+        };
+    }
+
     /**
      * WebSocket endpoint for the chat server.
      * This class handles WebSocket connections and messages.
@@ -479,7 +526,6 @@ final class StatusHttpServer {
          */
         @OnOpen
         public void onOpen(Session session) {
-            System.out.println("WebSocket: Connection opened: " + session.getId());
             SESSIONS.add(session);
             WebHandler handler = new WebHandler(session, hub, null);
             HANDLER_MAP.put(session, handler);
@@ -527,11 +573,11 @@ final class StatusHttpServer {
                 handler.setUsername(msg.getUser());
                 handler.setAuthenticated(true);
                 hub.getHistory().forEach(handler::send);
+                hub.addClient(handler);
+                System.out.println(handler.getUsername() + " connected on WebSocket: " + session.getId());
 
                 // Broadcast the "hello" message to all connected clients.
-                ChatMessage hello = ChatMessage.hello(msg.getUser(), null);
-                hub.broadcast(hello);
-                hub.broadcast(ChatMessage.userList(hub.getUsernames()));
+                hub.broadcast(ChatMessage.hello(msg.getUser(), null));
                 return;
             }
 
@@ -541,7 +587,12 @@ final class StatusHttpServer {
                 if (CommandHelper.command(msg, hub, handler)) {
                     return;
                 }
-                hub.broadcast(msg);
+                if ("text".equals(msg.getType())) {
+                    ChatMessage stamped = ChatMessage.of(handler.getUsername(), msg.getBody());
+                    hub.broadcast(stamped);
+                } else {
+                    hub.broadcast(msg);
+                }
             }
         }
 
@@ -555,10 +606,11 @@ final class StatusHttpServer {
             SESSIONS.remove(session);
             WebHandler handler = HANDLER_MAP.remove(session);
             if (handler != null) {
+                hub.broadcast(ChatMessage.bye(handler.getUsername()));
                 hub.releaseName(handler.getUsername());
                 hub.removeClient(handler);
-                hub.broadcast(ChatMessage.userList(hub.getUsernames()));
             }
+            SESSIONS.remove(session);
         }
 
         /**

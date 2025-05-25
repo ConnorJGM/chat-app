@@ -107,10 +107,12 @@ public final class CommandHelper {
         // Check if the message is a command to quit.
         // The command format is "quit".
         if ("quit".equalsIgnoreCase(body)) {
-            send.send(ChatMessage.of("Server", "Goodbye!"));
-            if (send instanceof WebHandler webHandler) {
-                webHandler.close();
+            if (send instanceof WebHandler web) {
+                web.close();
+            } else {
+                send.send(ChatMessage.of("Server", "Goodbye!"));
             }
+            return true;
         }
         // If the message is not a command, return false.
         // This indicates that the message should be processed as a regular chat message.
