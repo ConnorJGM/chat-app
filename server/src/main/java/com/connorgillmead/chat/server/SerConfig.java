@@ -163,12 +163,12 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
         StatusHttpServer.start(hub);
         // Start the WebSocket server.
         // The WebSocket server is used to provide real-time updates to connected clients.
-        StatusHttpServer.WebSocketChatEndpoint.attachHub(hub);
+        WebSocketChatEndpoint.attachHub(hub);
 
         org.glassfish.tyrus.server.Server wsServer =
             new org.glassfish.tyrus.server.Server(
                 "localhost", LISTENER_PORT, "/", null,
-                StatusHttpServer.WebSocketChatEndpoint.class
+                WebSocketChatEndpoint.class
             );
         try {
             wsServer.start();

@@ -3,7 +3,6 @@
 package com.connorgillmead.chat.client;
 
 import com.connorgillmead.chat.common.ChatMessage;
-import com.google.gson.JsonSyntaxException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -171,42 +170,38 @@ public record CliConfig(String host, int port, String user, String token) {
 
         // Create a new thread to read messages from the server.
         new Thread(() -> {
-            try (BufferedReader in = new BufferedReader(
+            try (BufferedReader input = new BufferedReader(
                     new InputStreamReader(socket.getInputStream(), "UTF-8"))) {
                 String line;
 
                 // Read messages from the server in a loop.
                 // Each message is expected to be in JSON format.
-                while ((line = in.readLine()) != null) {
-                    ChatMessage m;
-                    try {
-                        m = ChatMessage.fromJson(line);
-                    } catch (JsonSyntaxException | IllegalStateException e) {
-                        continue;
+                while ((line = input.readLine()) != null) {
+                    ChatMessage message = ChatMessage.fromJson(line);
+
+                    // If the user is kicked, print the message body and exit the application.
+                    // This is used to notify the user that they have been kicked from the chat.
+                    if (message.isKick()) {
+                        System.out.println(message.getBody());
+                        System.exit(0);
                     }
+
                     // Exit application if authentication fails.
-                    if ("error".equals(m.getType())) {
-                        System.err.println("Server refused connection: " + m.getBody());
+                    if ("error".equals(message.getType())) {
+                        System.err.println("Server refused connection: " + message.getBody());
                         System.exit(1);
                     }
 
                     // If the message is a roster update, print the list of connected users.
                     // Otherwise, print the message body and sender.
-                    if ("roster".equals(m.getType())) {
-                        lastRoster = m.getUserList();
+                    if ("roster".equals(message.getType())) {
+                        lastRoster = message.getUserList();
                         if (!intialRosterShown && lastRoster.contains(user)) {
                             System.out.println("Connected users: " + String.join(", ", lastRoster));
                             intialRosterShown = true;
                         }
                     } else {
-                        System.out.printf("%s: %s%n", m.getUser(), m.getBody());
-                    }
-
-                    // If the user is kicked, print the message body and exit the application.
-                    // This is used to notify the user that they have been kicked from the chat.
-                    if (m.isKick()) {
-                        System.out.println(m.getBody());
-                        System.exit(0);
+                        System.out.printf("%s: %s%n", message.getUser(), message.getBody());
                     }
                 }
             } catch (IOException ignored) {

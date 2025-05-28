@@ -1,0 +1,32 @@
+<div class = "d-flex flex-column justify-center align-items-center"
+style = "min-height: 60vh">
+    <div class = "card mb-4 w-75 mx-auto" style = "min-height: 60vh;">
+        <div class = "card-body d-flex flex-column justify-content-center align-items-center"
+        style = "height: 80%;">
+            <h2 class = "card-title">Dashboard</h2>
+            <p class = "card-text"><strong>Uptime: </strong>
+                <span id="uptime">%s</span></p>
+            <p class = "card-text"><strong>Connected Users: </strong>
+                <span id="userCount"> %d</span></p>
+            <script>
+                function refreshStatus() {
+                    fetch('/status.json')
+                        .then(r => r.json())
+                        .then(data => {
+                            let sec = Math.floor(data.uptime / 1000),
+                                hour = Math.floor(sec / 3600),
+                                minute = Math.floor((sec % 3600) / 60),
+                                second = sec % 60;
+                            document.getElementById('uptime').textContent =
+                                data.uptimeString;
+                            document.getElementById('userCount').textContent =
+                                data.users;
+                        });
+                }
+                setInterval(refreshStatus, 1000);
+                refreshStatus();
+            </script>
+            <a href = "/users" class = "btn btn-primary mt-3">View Connected Users</a>
+        </div>
+    </div>
+</div>

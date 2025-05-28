@@ -152,7 +152,7 @@ final class ChatServerHub {
             }
         }
         // Send to all WebSocket clients.
-        StatusHttpServer.WebSocketChatEndpoint.sendToAll(msg);
+        WebSocketChatEndpoint.sendToAll(msg);
     }
 
     /**
@@ -186,16 +186,17 @@ final class ChatServerHub {
      * This method iterates through both TCP and WebSocket clients to find the client with the specified username.
      */
     public synchronized void kickClient(String username) {
-        Iterator<ClientHandler> it = clients.iterator();
-        while (it.hasNext()) {
-            ClientHandler ch = it.next();
-            if (username.equals(ch.getUsername())) {
-                if (ch instanceof WebHandler web) {
+        Iterator<ClientHandler> client = clients.iterator();
+        while (client.hasNext()) {
+            ClientHandler clientHandler = client.next();
+            if (username.equals(clientHandler.getUsername())) {
+                clientHandler.send(ChatMessage.kick("You have been kicked from the chat."));
+                if (clientHandler instanceof WebHandler web) {
                     web.close();
                 } else {
-                    ch.disconnect();
+                    clientHandler.disconnect();
                 }
-                it.remove();
+                client.remove();
                 break;
             }
         }
