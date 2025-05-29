@@ -23,7 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
 final class ChatServerHub {
     /**
      * The path to the log file where chat messages are stored.
-     * This is a static final field, meaning it is a constant value that does not change.
+     * This is a static final field, meaning it is a constant value that does not
+     * change.
      */
     private static final Path LOG = Path.of("chat.log");
 
@@ -56,36 +57,40 @@ final class ChatServerHub {
     /**
      * Private constructor to prevent instantiation.
      * This class is not meant to be instantiated; it only contains static methods.
+     *
      * @param c The client handler to add.
      */
     void addClient(ClientHandler c) {
         clients.add(c);
         append(String.format("[%s] JOIN %s",
-               Instant.now(), c.getUsername()));
+                Instant.now(), c.getUsername()));
         broadcast(ChatMessage.userList(getUsernames()));
     }
-
 
     /**
      * Removes a client from the chat server.
      * This method is called when a client disconnects from the server.
      * It removes the client from the set of connected clients and logs the event.
+     *
      * @param c The client handler to remove.
      */
     void removeClient(ClientHandler c) {
         clients.remove(c);
         append(String.format("[%s] LEAVE %s",
-               Instant.now(), c.getUsername()));
+                Instant.now(), c.getUsername()));
         broadcast(ChatMessage.userList(getUsernames()));
     }
 
     /**
      * Reserves a username for a client.
      * This method is called when a client connects to the server.
+     *
      * @param user The username to reserve.
-     * This method adds the username to the set of names in use.
-     * @return True if the name was successfully reserved, false if it was already in use.
-     * This method checks if the username is already in use by another client.
+     *             This method adds the username to the set of names in use.
+     * @return True if the name was successfully reserved, false if it was already
+     *         in use.
+     *         This method checks if the username is already in use by another
+     *         client.
      */
     synchronized boolean reserveName(String user) {
         for (String u : namesInUse) {
@@ -100,6 +105,7 @@ final class ChatServerHub {
     /**
      * Sets the token for the chat server.
      * This method is called to set the token used for authentication.
+     *
      * @param token The token to set for the chat server.
      */
     public void setToken(String token) {
@@ -109,6 +115,7 @@ final class ChatServerHub {
     /**
      * Gets the token for the chat server.
      * This method is called to retrieve the token used for authentication.
+     *
      * @return The token for the chat server.
      */
     public String getToken() {
@@ -118,8 +125,9 @@ final class ChatServerHub {
     /**
      * Releases a reserved name.
      * This method is called when a client disconnects or changes their username.
+     *
      * @param user The username to release.
-     * This method removes the username from the set of names in use.
+     *             This method removes the username from the set of names in use.
      */
     synchronized void releaseName(String user) {
         if (user != null) {
@@ -132,6 +140,7 @@ final class ChatServerHub {
      * This method is called when a client sends a message to the server.
      * It appends the message to the log and sends it to all connected clients.
      * History is maintained for the last 100 messages.
+     *
      * @param msg The message to broadcast.
      */
     void broadcast(ChatMessage msg) {
@@ -159,6 +168,7 @@ final class ChatServerHub {
      * Returns the chat history.
      * This method returns a copy of the chat history, which is a list of messages.
      * The history is limited to the last 100 messages.
+     *
      * @return A list of chat messages representing the chat history.
      */
     List<ChatMessage> getHistory() {
@@ -172,18 +182,21 @@ final class ChatServerHub {
     }
 
     // Returns a list of usernames of connected clients.
-    // This method returns a sorted list of usernames obtained from the set of connected clients.
+    // This method returns a sorted list of usernames obtained from the set of
+    // connected clients.
     List<String> getUsernames() {
         return namesInUse.stream()
-            .sorted(String::compareToIgnoreCase)
-            .toList();
+                .sorted(String::compareToIgnoreCase)
+                .toList();
     }
 
     /**
      * Kicks a client from the chat server.
      * This method is called to disconnect a client by their username.
+     *
      * @param username The username of the client to kick.
-     * This method iterates through both TCP and WebSocket clients to find the client with the specified username.
+     *                 This method iterates through both TCP and WebSocket clients
+     *                 to find the client with the specified username.
      */
     public synchronized void kickClient(String username) {
         Iterator<ClientHandler> client = clients.iterator();
@@ -206,16 +219,16 @@ final class ChatServerHub {
      * Appends a line to the log file.
      * This method is called to log events such as client connections and messages.
      * It uses the Files.writeString method to write the line to the log file.
+     *
      * @param line The line to append to the log file.
      */
     public static void append(String line) {
         try {
             Files.writeString(
-                LOG,
-                line + System.lineSeparator(),
-                StandardOpenOption.CREATE,
-                StandardOpenOption.APPEND
-            );
+                    LOG,
+                    line + System.lineSeparator(),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND);
         } catch (IOException e) {
             System.err.println("LOG ERROR: " + e.getMessage());
         }
@@ -224,10 +237,14 @@ final class ChatServerHub {
     /**
      * Starts a number guessing game.
      * This method is called when a player wants to start a new game.
+     *
      * @param owner The name of the player who starts the game.
-     * This method creates a new NumberGame instance and sets it as the current game.
-     * @return A message indicating the game has started or an error message if a game is already in progress.
-     * This method checks if there is already an active game and returns an error message if so.
+     *              This method creates a new NumberGame instance and sets it as the
+     *              current game.
+     * @return A message indicating the game has started or an error message if a
+     *         game is already in progress.
+     *         This method checks if there is already an active game and returns an
+     *         error message if so.
      */
     public synchronized String startNumberGame(String owner) {
         if (currentNumberGame != null && currentNumberGame.isActive()) {
@@ -240,11 +257,14 @@ final class ChatServerHub {
     /**
      * Handles a player's guess in the number guessing game.
      * This method is called when a player makes a guess.
+     *
      * @param player The name of the player making the guess.
-     * @param guess The player's guess.
-     * This method checks the player's guess against the target number.
-     * @return A message indicating whether the guess is too low, too high, or correct.
-     * If the guess is correct, the game is marked as inactive.
+     * @param guess  The player's guess.
+     *               This method checks the player's guess against the target
+     *               number.
+     * @return A message indicating whether the guess is too low, too high, or
+     *         correct.
+     *         If the guess is correct, the game is marked as inactive.
      */
     public synchronized String checkGuess(String player, int guess) {
         if (currentNumberGame == null || !currentNumberGame.isActive()) {
@@ -264,13 +284,18 @@ final class ChatServerHub {
     /**
      * Starts a poll.
      * This method is called when a player wants to start a new poll.
-     * @param owner The name of the player who starts the poll.
-     * This method creates a new Poll instance and sets it as the current poll.
+     *
+     * @param owner    The name of the player who starts the poll.
+     *                 This method creates a new Poll instance and sets it as the
+     *                 current poll.
      * @param question The question for the poll.
-     * @param options The options for the poll.
-     * This method checks if there is already an active poll and returns an error message if so.
-     * @return A message indicating the poll has started or an error message if a poll is already in progress.
-     * This method checks if there is already an active poll and returns an error message if so.
+     * @param options  The options for the poll.
+     *                 This method checks if there is already an active poll and
+     *                 returns an error message if so.
+     * @return A message indicating the poll has started or an error message if a
+     *         poll is already in progress.
+     *         This method checks if there is already an active poll and returns an
+     *         error message if so.
      */
     public synchronized String startPoll(String owner, String question, String... options) {
         if (currentPoll != null && currentPoll.isActive()) {
@@ -283,12 +308,14 @@ final class ChatServerHub {
     /**
      * Handles a player's vote in the poll.
      * This method is called when a player votes in the poll.
-     * @param voter The name of the player making the vote.
+     *
+     * @param voter  The name of the player making the vote.
      * @param option The option chosen by the player.
-     * This method checks if the poll is active and if the option is valid.
+     *               This method checks if the poll is active and if the option is
+     *               valid.
      * @return A message indicating the result of the vote or
-     * an error message if the poll is closed or the option is invalid.
-     * This method checks if the poll is active and if the option is valid.
+     *         an error message if the poll is closed or the option is invalid.
+     *         This method checks if the poll is active and if the option is valid.
      */
     public synchronized String vote(String voter, int option) {
         if (currentPoll == null || !currentPoll.isActive()) {
@@ -300,8 +327,11 @@ final class ChatServerHub {
     /**
      * Finishes the poll.
      * This method is called when the poll owner wants to finish the poll.
-     * @return A message indicating the results of the poll or an error message if there is no active poll.
-     * This method checks if the poll is active and if the owner is the one who started the poll.
+     *
+     * @return A message indicating the results of the poll or an error message if
+     *         there is no active poll.
+     *         This method checks if the poll is active and if the owner is the one
+     *         who started the poll.
      */
     public synchronized String finish(String requester) {
         if (currentPoll == null || !currentPoll.isActive()) {
@@ -319,5 +349,28 @@ final class ChatServerHub {
     // This method checks if the current poll is not null and if it is active.
     public synchronized boolean hasActivePoll() {
         return currentPoll != null && currentPoll.isActive();
+    }
+
+    /**
+     * Kicks a user from the chat server.
+     * This method is called to disconnect a user by their username.
+     *
+     * @param username The username of the user to kick.
+     *                 This method iterates through all connected clients and sends
+     *                 a kick message to the specified user.
+     */
+    public synchronized void kickUser(String username) {
+        for (ClientHandler client : clients) {
+            if (client.getUsername().equalsIgnoreCase(username)) {
+                client.send(ChatMessage.kick("You have been kicked from the chat."));
+                if (client instanceof WebHandler web) {
+                    web.close();
+                } else {
+                    client.disconnect();
+                }
+                clients.remove(client);
+                break;
+            }
+        }
     }
 }
