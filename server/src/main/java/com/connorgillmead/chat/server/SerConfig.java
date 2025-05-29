@@ -160,7 +160,7 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
     public static ChatServerHub startAncillaryServer(SerConfig cfg) throws IOException, DeploymentException {
         ChatServerHub hub = new ChatServerHub();
         hub.setToken(cfg.token());
-        StatusHttpServer.start(hub);
+        ChatHttpServer.start(hub);
         // Start the WebSocket server.
         // The WebSocket server is used to provide real-time updates to connected clients.
         WebSocketChatEndpoint.attachHub(hub);
