@@ -5,6 +5,9 @@ package com.connorgillmead.chat.server;
 import jakarta.websocket.DeploymentException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
 
 /**
@@ -33,25 +36,38 @@ public final class ChatServerApp {
 
         // Create a Scanner object to read user input from the console.
         Scanner console = new Scanner(System.in, "UTF-8");
+
+        // Parse command line arguments to get the server configuration.
+        // The SerConfig.parseArgs method is used to parse the command line arguments
+        // and create a SerConfig object that contains the host, port, and token.
+        List<String> mainArgs = new ArrayList<>(Arrays.asList(args));
+        boolean autoStart = mainArgs.remove("--auto-start");
         SerConfig cfg = SerConfig.parseArgs(args);
 
-        // Parse command line arguments and create a SerConfig object.
-        // The SerConfig class is responsible for handling server configuration.
-        cfg = SerConfig.argumentPrompt(cfg, console);
+        // If the host, port, or token is not provided, prompt the user for input.
+        // The SerConfig.argumentPrompt method is used to prompt the user for missing
+        if (!cfg.hostGiven() || !cfg.portGiven() || (cfg.token() == null || cfg.token().isEmpty())) {
+            if (!autoStart) {
+                cfg = SerConfig.argumentPrompt(cfg, console);
+                SerConfig.save(cfg);
+            }
+        }
 
         // Start the server by prompting the user for input.
         // The user is prompted to type 'start' to start the server or 'quit' to exit.
-        System.out.println("Type 'start' to start the server, 'quit' to exit.");
-        String command;
-        while (console.hasNextLine()) {
-            command = console.nextLine().trim().toLowerCase();
-            if ("start".equals(command)) {
-                break;
-            } else if ("quit".equals(command)) {
-                System.out.println("Exiting without starting the server.");
-                return;
-            } else {
-                System.out.println("Unknown command: " + command);
+        if (!autoStart) {
+            System.out.println("Type 'start' to start the server, 'quit' to exit.");
+            String command;
+            while (console.hasNextLine()) {
+                command = console.nextLine().trim().toLowerCase();
+                if ("start".equals(command)) {
+                    break;
+                } else if ("quit".equals(command)) {
+                    System.out.println("Exiting without starting the server.");
+                    return;
+                } else {
+                    System.out.println("Unknown command: " + command);
+                }
             }
         }
 
@@ -81,7 +97,8 @@ public final class ChatServerApp {
             System.out.println("Type 'kick <username>' to kick a user, 'quit' to shutdown server.");
 
             // Admin commands thread to handle kicking users and shutting down the server.
-            // This thread listens for commands from the console and performs actions based on the input.
+            // This thread listens for commands from the console and performs actions based
+            // on the input.
             Thread admin = new Thread(() -> {
                 while (console.hasNextLine()) {
                     final int kickLength = 5;

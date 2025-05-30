@@ -18,6 +18,7 @@ final class ChatHttpServer {
     static final int HTTP_STATUS_BAD_REQUEST = 400;
     static final int HTTP_METHOD_NOT_ALLOWED = 405;
     static final int HTTP_FORBIDDEN = 403;
+    static final int HTTP_REDIRECT = 303;
     private static final int PORT_HTTP = 8080;
 
     /**
@@ -37,7 +38,21 @@ final class ChatHttpServer {
      * @return The started HttpServer instance.
      * @throws IOException If an I/O error occurs while starting the server.
      */
-    static HttpServer start(ChatServerHub hub) throws IOException {
+    static HttpServer start(ChatServerHub hub, SerConfig cfg) throws IOException {
+        return start(hub, cfg, new String[0]);
+    }
+
+    /**
+     * Starts the HTTP server with the specified ChatServerHub.
+     * This method initializes the HTTP server, registers handlers for various
+     * endpoints,
+     * and starts the server to listen for incoming requests.
+     *
+     * @param hub The ChatServerHub instance that manages chat functionality.
+     * @return The started HttpServer instance.
+     * @throws IOException If an I/O error occurs while starting the server.
+     */
+    static HttpServer start(ChatServerHub hub, SerConfig cfg, String[] originalArgs) throws IOException {
         HttpServer server = HttpServer.createSimpleServer(null, PORT_HTTP);
         long startMillis = System.currentTimeMillis();
 
@@ -46,7 +61,7 @@ final class ChatHttpServer {
         // users endpoint.
         // The startMillis is used to calculate the server's uptime.
         WebPageServer.register(server, hub, startMillis);
-        ApiServer.register(server, hub, startMillis);
+        ApiServer.register(server, hub, cfg, startMillis, originalArgs);
         // Attach the WebSocket endpoint to the hub.
         // This allows the WebSocket endpoint to access the ChatServerHub instance for
         // broadcasting messages.

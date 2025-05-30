@@ -1,6 +1,7 @@
 # Maven build output
 **/target/
 chat.log
+server_config.properties
 
 # IDE folders
 .vscode/

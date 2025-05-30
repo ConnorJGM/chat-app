@@ -12,30 +12,44 @@ import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 
 /**
- * ApiServer is a utility class that registers HTTP handlers for the chat server's
+ * ApiServer is a utility class that registers HTTP handlers for the chat
+ * server's
  * API endpoints.
- * It provides endpoints for sending messages, checking server status, and kicking
+ * It provides endpoints for sending messages, checking server status, and
+ * kicking
  * users.
  * This class is not meant to be instantiated.
  */
 final class ApiServer {
-    private ApiServer() { }
+    // Restart signal constant used to indicate a server restart.
+    private static final int RESTART_SIGNAL = 5;
+
+    private ApiServer() {
+    }
 
     /**
      * Registers the HTTP handlers for the chat server's API endpoints.
      * This method sets up the `/send`, `/status.json`, and `/kick` endpoints for
      * the HTTP server.
-     * @param server The HttpServer instance to register handlers with.
-     * @param hub The ChatServerHub instance that manages chat functionality.
+     *
+     * @param server      The HttpServer instance to register handlers with.
+     * @param hub         The ChatServerHub instance that manages chat
+     *                    functionality.
      * @param startMillis The start time of the server in milliseconds.
      */
-    static void register(HttpServer server, ChatServerHub hub, long startMillis) {
+    static void register(HttpServer server,
+                         ChatServerHub hub,
+                         SerConfig cfg,
+                         long startMillis,
+                         String[] originalArgs) {
         server.getServerConfiguration()
                 .addHttpHandler(createSendHandler(hub), "/send");
         server.getServerConfiguration()
                 .addHttpHandler(createStatusJsonHandler(hub, startMillis), "/status.json");
         server.getServerConfiguration()
                 .addHttpHandler(createKickHandler(hub), "/kick");
+        server.getServerConfiguration()
+                .addHttpHandler(createRestartHandler(cfg, originalArgs), "/restart");
     }
 
     /**
@@ -169,6 +183,38 @@ final class ApiServer {
                 String kicked = "Kicked: " + user;
                 response.setContentLength(kicked.getBytes(StandardCharsets.UTF_8).length);
                 response.getWriter().write(kicked);
+            }
+        };
+    }
+
+    /**
+     * Creates an HTTP handler for the `/restart` endpoint.
+     * This handler processes POST requests to restart the chat server.
+     * It removes the shutdown hook and starts a new process to run the server
+     * again.
+     *
+     * @return An HttpHandler that handles requests to the `/restart` endpoint.
+     */
+    private static HttpHandler createRestartHandler(SerConfig cfg, String[] originalArgs) {
+        return new HttpHandler() {
+            @Override
+            public void service(Request request, Response response) throws IOException {
+                if ("POST".equalsIgnoreCase(String.valueOf(request.getMethod()))) {
+                    final int timeout = 100;
+                    SerConfig.removeShutdownHook();
+
+                    new Thread(() -> {
+                        try {
+                            Thread.sleep(timeout);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                            if (e instanceof InterruptedException) {
+                                Thread.currentThread().interrupt();
+                            }
+                        }
+                        System.exit(RESTART_SIGNAL);
+                    }, "Restart-Server-Thread").start();
+                }
             }
         };
     }

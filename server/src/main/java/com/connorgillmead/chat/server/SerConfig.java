@@ -6,12 +6,20 @@ import com.connorgillmead.chat.common.ChatMessage;
 import jakarta.websocket.DeploymentException;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Properties;
 import java.util.Scanner;
 
 /**
@@ -50,6 +58,15 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
     // WebSocket connections.
     private static final int LISTENER_PORT = 8081;
 
+    // Path to the configuration file.
+    // This file is used to store the server configuration, such as host, port,
+    // and access token.
+    private static final Path CONFIG_FILE = Path.of("server_config.properties");
+
+    // Shutdown hook thread for the server.
+    // This thread is used to gracefully shut down the server when the JVM exits.
+    private static Thread shutdownHook;
+
     /**
      * Creates a new SerConfig object from command-line arguments.
      * The method parses the command-line arguments and prompts the user for any
@@ -63,40 +80,79 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
      *         The object contains the host name, port number, and access token.
      */
     public static SerConfig parseArgs(String[] args) {
+        List<String> argList = new ArrayList<>(Arrays.asList(args));
+        boolean autoStart = argList.remove("--auto-start");
+
         // Default values for host, port, and token.
         String host = "localhost";
         int port = DEFAULT_PORT;
         String token = null;
-
         // Used to specify if user enters default values.
         boolean hostGiven = false;
         boolean portGiven = false;
 
-        // Begin looping through command-line arguments.
-        for (int i = 0; i < args.length;) {
-            switch (args[i]) {
-                case "--host" -> {
-                    host = args[i + 1];
-                    hostGiven = true;
-                    i += 2;
-                }
-                case "--port" -> {
-                    port = Integer.parseInt(args[i + 1]);
-                    portGiven = true;
-                    i += 2;
-                }
-                case "--token" -> {
-                    token = args[i + 1];
-                    i += 2;
-                }
-                default -> {
-                    port = Integer.parseInt(args[i]);
-                    portGiven = true;
-                    i += 1;
+        // If autoStart is true, load the configuration from the properties file.
+        // This allows the server to start with the last used configuration without
+        // requiring the user to provide command-line arguments.
+        if (autoStart && Files.exists(CONFIG_FILE)) {
+            Properties properties = new Properties();
+            try (InputStream input = Files.newInputStream(CONFIG_FILE)) {
+                properties.load(input);
+            } catch (IOException e) {
+                System.err.println("Failed to load configuration: " + e.getMessage());
+            }
+            host = properties.getProperty("host", host);
+            port = Integer.parseInt(properties.getProperty("port", String.valueOf(port)));
+            String rawToken = properties.getProperty("token", "").trim();
+            token = rawToken.isEmpty() ? null : rawToken;
+            hostGiven = true;
+            portGiven = true;
+        } else {
+            // Begin looping through command-line arguments.
+            for (int i = 0; i < argList.size();) {
+                switch (argList.get(i)) {
+                    case "--host" -> {
+                        host = argList.get(i + 1);
+                        hostGiven = true;
+                        i += 2;
+                    }
+                    case "--port" -> {
+                        port = Integer.parseInt(argList.get(i + 1));
+                        portGiven = true;
+                        i += 2;
+                    }
+                    case "--token" -> {
+                        token = argList.get(i + 1);
+                        i += 2;
+                    }
+                    default -> {
+                        i++;
+                    }
                 }
             }
         }
         return new SerConfig(host, port, token, hostGiven, portGiven);
+    }
+
+    /**
+     * Saves the server configuration to a properties file.
+     * This method writes the host, port, and token to a properties file named
+     * server_config.properties.
+     * If the token is null, it saves an empty string for the token.
+     * @param config The SerConfig object containing the server configuration.
+     *               This object contains the host name, port number, and access token.
+     */
+    public static void save(SerConfig config) {
+        Properties properties = new Properties();
+        properties.setProperty("host", config.host());
+        properties.setProperty("port", String.valueOf(config.port()));
+        String token = config.token() == null ? "" : config.token();
+        properties.setProperty("token", token);
+        try (OutputStream output = Files.newOutputStream(CONFIG_FILE)) {
+            properties.store(output, "Chat Server Configuration");
+        } catch (IOException e) {
+            System.err.println("Failed to save configuration: " + e.getMessage());
+        }
     }
 
     /**
@@ -112,34 +168,44 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
      * @return A new SerConfig object with the provided or default values.
      *         The object contains the host name, port number, and access token.
      */
-    public static SerConfig argumentPrompt(SerConfig in, Scanner console) {
-        String h = in.host();
-        int p = in.port();
-        String t = in.token();
+    public static SerConfig argumentPrompt(SerConfig input, Scanner console) {
+        String host = input.host();
+        int port = input.port();
+        String token = input.token();
 
         // Check if the user has specified a host.
-        if (!in.hostGiven) {
-            System.out.print("Bind address [localhost]: ");
-            String v = console.nextLine().trim();
-            h = v.isEmpty() ? "localhost" : v;
+        if (!input.hostGiven) {
+            System.out.print("Bind address [" + host + "]: ");
+            String line = console.hasNextLine()
+                    ? console.nextLine().trim()
+                    : "";
+            host = line.isEmpty() ? "localhost" : line;
         }
 
         // Check if the user has specified a port number.
-        if (!in.portGiven) {
-            System.out.printf("Port [%d]: ", DEFAULT_PORT);
-            String v = console.nextLine().trim();
-            if (!v.isEmpty()) {
-                p = Integer.parseInt(v);
+        if (!input.portGiven) {
+            System.out.printf("Port [%d]: ", port);
+            String line = console.hasNextLine()
+                    ? console.nextLine().trim()
+                    : "";
+            if (!line.isEmpty()) {
+                try {
+                    port = Integer.parseInt(line);
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid port number. Using default port " + DEFAULT_PORT);
+                }
             }
         }
 
         // Check if the expectedToken has not been set (null).
-        if (t == null) {
+        if (token == null) {
             System.out.print("Access token (or press Enter for none): ");
-            String v = console.nextLine().trim();
-            t = v.isEmpty() ? null : v;
+            String line = console.hasNextLine()
+                    ? console.nextLine().trim()
+                    : "";
+            token = line.isEmpty() ? null : line;
         }
-        return new SerConfig(h, p, t, true, true);
+        return new SerConfig(host, port, token, true, true);
     }
 
     /**
@@ -151,14 +217,28 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
      *            resources.
      */
     public static void shutdownServer(ChatServer tcp) {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+        shutdownHook = new Thread(() -> {
             System.out.println("Shutdown requested - closing server socket.");
             try {
                 tcp.close();
             } catch (IOException ignored) {
             }
             ChatServerHub.append("[" + Instant.now() + "] SERVER_STOP");
-        }));
+        }, "ChatServerShutdownHook");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
+    }
+
+    /**
+     * Removes the shutdown hook for the server.
+     * This method is called when the server is stopped or interrupted.
+     * It removes the shutdown hook thread that was added to the runtime.
+     * This is useful to prevent the shutdown hook from being called multiple times
+     * if the server is restarted.
+     */
+    public static void removeShutdownHook() {
+        if (shutdownHook != null) {
+            Runtime.getRuntime().removeShutdownHook(shutdownHook);
+        }
     }
 
     /**
@@ -179,7 +259,7 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
     public static ChatServerHub startAncillaryServer(SerConfig cfg) throws IOException, DeploymentException {
         ChatServerHub hub = new ChatServerHub();
         hub.setToken(cfg.token());
-        ChatHttpServer.start(hub);
+        ChatHttpServer.start(hub, cfg);
         // Start the WebSocket server.
         // The WebSocket server is used to provide real-time updates to connected
         // clients.
