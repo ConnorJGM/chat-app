@@ -387,12 +387,16 @@ public final class ChatClientTuiApp {
             if (socket != null) {
                 socket.close();
             }
-        } catch (IOException ignored) { }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         try {
             if (screen != null) {
                 screen.stopScreen();
             }
-        } catch (IOException ignored) { }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         new Thread(() -> {
             System.exit(0);
         }).start();

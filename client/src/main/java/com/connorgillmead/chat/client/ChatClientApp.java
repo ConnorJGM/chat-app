@@ -3,7 +3,9 @@
 package com.connorgillmead.chat.client;
 
 import com.connorgillmead.chat.common.ChatMessage;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
@@ -61,12 +63,30 @@ public final class ChatClientApp {
                 true
                 );
 
+            BufferedReader input = new BufferedReader(
+                new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)
+            );
+
+            System.out.println("Connected to chat server at " + cfg.host() + ":" + cfg.port());
+
+            AuthenticationHandler authenticationHandler = new AuthenticationHandler(console, out, input);
+            boolean authenticated = authenticationHandler.authenticate();
+            if (!authenticated) {
+                System.err.println("Authentication failed. Exiting.");
+                return;
+            }
+
+            String authenticatedUsername = authenticationHandler.getAuthenticatedUsername();
+            if (authenticatedUsername == null || authenticatedUsername.isEmpty()) {
+                System.err.println("No username provided. Exiting.");
+                return;
+            }
+
             // Start a new thread to read messages from the server.
-            CliConfig.startReader(socket, cfg.user());
+            CliConfig.startReader(socket, authenticatedUsername);
 
             // Notify the server that the user has joined the chat.
-            out.println(ChatMessage.hello(cfg.user(), cfg.token()).toJson());
-
+            out.println(ChatMessage.hello(authenticatedUsername, cfg.token()).toJson());
 
             // This thread reads user input from the console and sends it to the server.
             // It runs in a loop until the user enters "exit" or an I/O error occurs.
@@ -94,7 +114,7 @@ public final class ChatClientApp {
 
                 // Messages are sent to the server in JSON format.
                 // The ChatMessage class is used to create a message object with the username and message body.
-                ChatMessage msg = ChatMessage.of(cfg.user(), text);
+                ChatMessage msg = ChatMessage.of(authenticatedUsername, text);
                 out.println(msg.toJson());
             }
         // Close the socket and release any associated resources.

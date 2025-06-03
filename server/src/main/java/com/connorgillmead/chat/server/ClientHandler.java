@@ -3,14 +3,17 @@
 package com.connorgillmead.chat.server;
 
 import com.connorgillmead.chat.common.ChatMessage;
+import com.connorgillmead.chat.server.database.Database;
 import java.io.*;
 import java.net.Socket;
+import org.mindrot.jbcrypt.BCrypt;
 
 /**
  * Handles communication with a single client.
  * This class is responsible for reading messages from the client,
  * processing them, and sending responses back to the client.
- * It implements the Runnable interface to allow it to be run in a separate thread.
+ * It implements the Runnable interface to allow it to be run in a separate
+ * thread.
  */
 public class ClientHandler implements Runnable {
     // Instance variables for the ClientHandler class.
@@ -18,19 +21,18 @@ public class ClientHandler implements Runnable {
     private final ChatServerHub hub;
     private String username;
     private PrintWriter out;
+    private boolean authenticated;
 
     /**
      * Constructor for ClientHandler.
-     * Initialises the socket, hub, and username for the client.
+     * Initialises the socket and hub for the client.
      *
-     * @param socket   The socket representing the connection to the client.
-     * @param hub      The ChatServerHub instance managing all clients.
-     * @param username The username of the client.
+     * @param socket The socket representing the connection to the client.
+     * @param hub    The ChatServerHub instance managing all clients.
      */
-    ClientHandler(Socket socket, ChatServerHub hub, String username) {
+    ClientHandler(Socket socket, ChatServerHub hub) {
         this.socket = socket;
         this.hub = hub;
-        this.username = username;
     }
 
     /**
@@ -51,6 +53,26 @@ public class ClientHandler implements Runnable {
      */
     String getUsername() {
         return username;
+    }
+
+    /**
+     * Returns whether the client is authenticated.
+     * This method is used to check if the client has successfully logged in.
+     *
+     * @return true if the client is authenticated, false otherwise.
+     */
+    public boolean isAuthenticated() {
+        return authenticated;
+    }
+
+    /**
+     * Sets the authentication status of the client.
+     * This method is used to update the authentication status of the client.
+     *
+     * @param authenticated The new authentication status of the client.
+     */
+    public void setAuthenticated(boolean authenticated) {
+        this.authenticated = authenticated;
     }
 
     /**
@@ -78,9 +100,58 @@ public class ClientHandler implements Runnable {
             // The 'true' argument enables auto-flushing (output stream flushed).
             out = new PrintWriter(socket.getOutputStream(), true);
 
+            while (!authenticated) {
+                // Read the next line from the client.
+                String line = in.readLine();
+                if (line == null) {
+                    System.out.println("Client disconnected before authentication: " + socket.getRemoteSocketAddress());
+                    return;
+                }
+                // Parse the message from JSON format.
+                ChatMessage authorisedMessage = ChatMessage.fromJson(line);
+                String requestUsername = authorisedMessage.getUser();
+                String requestPassword = authorisedMessage.getPassword();
+
+                if (requestUsername == null || requestUsername.isBlank()
+                        || ("register".equals(authorisedMessage.getType())
+                                || "login".equals(authorisedMessage.getType()))
+                                && (requestPassword == null || requestPassword.isBlank())) {
+                    send(ChatMessage.authorisedResponse(authorisedMessage.getType(), requestUsername,
+                            false, "Username or password cannot be empty"));
+                    continue;
+                }
+
+                if ("register".equals(authorisedMessage.getType())) {
+                    System.err.println("SERVER: entered register branch for " + requestUsername);
+                    if (Database.userExists(requestUsername)) {
+                        send(ChatMessage.authorisedResponse("register_response", requestUsername, false,
+                                "Username already exists. Please try logging in or use a different username."));
+                    } else {
+                        // User does not exist, attempt to add to database
+                        if (Database.addUser(requestUsername, requestPassword)) {
+                            // User added to DB successfully, now handle session reservation
+                            processSuccessfulRegistrationAndReserveName(requestUsername);
+                        } else {
+                            // Failed to add user to DB
+                            System.err.println("SERVER: Database.addUser for " + requestUsername + " returned false.");
+                            send(ChatMessage.authorisedResponse("register_response", requestUsername, false,
+                                    "Failed to register user. "
+                                            + "The username might be taken or a server error occurred."));
+                        }
+                    }
+                    continue;
+
+                } else if ("login".equals(authorisedMessage.getType())) {
+                    loginAttempt(requestUsername, requestPassword);
+                } else {
+                    send(ChatMessage.authorisedResponse(authorisedMessage.getType(), requestUsername, false,
+                            "Registration failed."));
+                }
+            }
+
             // If the username is not set, read the first message from the client.
             // This is typically the "hello" message sent by the client to identify itself.
-            if (this.username == null) {
+            if (!this.authenticated || this.username == null) {
                 String firstLine = in.readLine();
                 if (firstLine == null) {
                     socket.close();
@@ -94,7 +165,7 @@ public class ClientHandler implements Runnable {
                 }
                 String serverToken = hub.getToken();
                 if (serverToken != null && !serverToken.isBlank()
-                    && !serverToken.equals(firstMsg.getToken())) {
+                        && !serverToken.equals(firstMsg.getToken())) {
                     out.println(ChatMessage.error("Invalid token"));
                     socket.close();
                     return;
@@ -103,35 +174,48 @@ public class ClientHandler implements Runnable {
                 hub.broadcast(firstMsg);
             }
 
-            // Get history and user list from the hub.
-            // The history is sent to the client to show previous messages.
-            hub.getHistory().forEach(this::send);
+            System.out.println(this.username + " connected from " + socket);
             hub.addClient(this);
-            send(ChatMessage.userList(hub.getUsernames()));
+            hub.getHistory().forEach(this::send);
 
             // Read messages from the client and broadcast them to all clients.
             // This loop continues until the client disconnects or an I/O error occurs.
             String line;
             while ((line = in.readLine()) != null) {
-                ChatMessage msg = ChatMessage.fromJson(line);
+                ChatMessage message = ChatMessage.fromJson(line);
                 // Check commands via help command.
                 // The command format is "help".
-                if (CommandHelper.command(msg, hub, this)) {
+                if (CommandHelper.command(message, hub, this)) {
                     continue;
                 }
-                // If the message is not a command, broadcast it to all clients.
-                hub.broadcast(msg);
+                if ("text".equals(message.getType())) {
+                    ChatMessage text = ChatMessage.of(this.username, message.getBody());
+                    hub.broadcast(text);
+                } else if ("bye".equals(message.getType())) {
+                    // If the message type is "bye", handle client disconnection.
+                    hub.broadcast(ChatMessage.bye(this.username));
+                    break; // Exit the loop to close the connection.
+                } else if ("hello".equals(message.getType())) {
+                    hub.broadcast(ChatMessage.hello(this.username, message.getToken()));
+                } else {
+                    // If the message type is not recognized, send an error response.
+                    send(ChatMessage.error("Unknown message type: " + message.getType()));
+                }
             }
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            e.printStackTrace();
         } finally {
-            // Clean up resources when the client disconnects
-            // and notify other clients about the disconnection.
-            hub.broadcast(ChatMessage.bye(username));
-            hub.releaseName(username);
-            hub.removeClient(this);
+            if (username != null && authenticated) {
+                // Clean up resources when the client disconnects
+                // and notify other clients about the disconnection.
+                hub.broadcast(ChatMessage.bye(username));
+                hub.releaseName(username);
+                hub.removeClient(this);
+            }
             try {
                 socket.close();
-            } catch (IOException ignored) {
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -143,18 +227,88 @@ public class ClientHandler implements Runnable {
      * @param msg The message to send to the client.
      */
     void send(ChatMessage msg) {
-        out.println(msg.toJson());
+        if (out != null) {
+            out.println(msg.toJson());
+        }
     }
 
     /**
      * Closes the connection to the client.
-     * This method is called to close the socket and release any associated resources.
+     * This method is called to close the socket and release any associated
+     * resources.
      */
     public void disconnect() {
         try {
             socket.close();
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Attempts to log in the user with the provided username and password.
+     * This method checks if the user exists in the database, retrieves the stored
+     * password hash, and verifies the password using BCrypt.
+     *
+     * @param requestUsername The username provided by the client.
+     * @param requestPassword The password provided by the client.
+     */
+    private void loginAttempt(String requestUsername, String requestPassword) {
+        // Check if the user exists in the database.
+        if (!Database.userExists(requestUsername)) {
+            send(ChatMessage.authorisedResponse("login_response", requestUsername, false,
+                    "User does not exist"));
+            return;
+        }
+
+        // Get the stored password hash for the user.
+        String storedHash = Database.getPasswordHash(requestUsername);
+        if (storedHash == null) {
+            send(ChatMessage.authorisedResponse("login_response", requestUsername, false,
+                    "Failed to retrieve password hash"));
+            return;
+        }
+
+        // Verify the password using BCrypt.
+        if (BCrypt.checkpw(requestPassword, storedHash)) {
+            if (!hub.reserveName(requestUsername)) {
+                send(ChatMessage.authorisedResponse("login_response", requestUsername, false,
+                        "User is already logged in."));
+                return;
+            }
+            this.username = requestUsername;
+            this.authenticated = true;
+            send(ChatMessage.authorisedResponse("login_response", requestUsername, true,
+                    "Login successful. Welcome: " + requestUsername + "!"));
+        } else {
+            send(ChatMessage.authorisedResponse("login_response", requestUsername, false,
+                    "Invalid username or password."));
+        }
+    }
+
+    /**
+     * Processes a successful user registration by attempting to reserve the
+     * username in the hub
+     * and authenticating the client.
+     *
+     * @param requestUsername The username that was successfully registered in the
+     *                        database.
+     */
+    private void processSuccessfulRegistrationAndReserveName(String requestUsername) {
+        System.err.println("SERVER: User " + requestUsername + " added to DB. Attempting to reserve name.");
+        if (!hub.reserveName(requestUsername)) {
+            System.err.println(
+                    "SERVER: hub.reserveName for " + requestUsername + " failed after DB add.");
+            send(ChatMessage.authorisedResponse("register_response", requestUsername, false,
+                    "Registration successful, but failed to reserve "
+                            + "username for this session. Please try logging in."));
+        } else {
+            System.err.println("SERVER: Registration and name reservation for " + requestUsername
+                    + " successful.");
+            this.username = requestUsername;
+            this.authenticated = true; // CRUCIAL: Mark as authenticated
+            send(ChatMessage.authorisedResponse("register_response", requestUsername, true,
+                    "Registration successful. Welcome: " + requestUsername + "!"));
         }
     }
 }

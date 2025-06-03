@@ -2,9 +2,11 @@
 
 package com.connorgillmead.chat.server;
 
+import com.connorgillmead.chat.server.database.Database;
 import jakarta.websocket.DeploymentException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -51,6 +53,16 @@ public final class ChatServerApp {
                 cfg = SerConfig.argumentPrompt(cfg, console);
                 SerConfig.save(cfg);
             }
+        }
+
+        try {
+            System.out.println("Creating database....");
+            Database.chatDatabase();
+            System.out.println("Database created successfully.");
+        } catch (SQLException e) {
+            System.err.println("Failed to create database: " + e.getMessage());
+            e.printStackTrace();
+            return;
         }
 
         // Start the server by prompting the user for input.

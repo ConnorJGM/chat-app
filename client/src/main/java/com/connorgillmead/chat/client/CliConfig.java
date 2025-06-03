@@ -63,7 +63,6 @@ public record CliConfig(String host, int port, String user, String token) {
         String host = null;
         int    port = -1;
         String token = null;
-        String user = null;
 
         // Begin looping through command-line arguments.
         for (int i = 0; i < args.length;) {
@@ -112,18 +111,7 @@ public record CliConfig(String host, int port, String user, String token) {
             token = t.isEmpty() ? null : t;
         }
 
-        if (user == null) {
-            // If no user name is given, prompt user for a user name.
-            System.out.print("Username: ");
-            String u = console.nextLine().trim();
-            if (u.isEmpty()) {
-                System.err.println("Username cannot be empty.");
-                System.exit(1);
-            }
-            user = u;
-        }
-
-        return new CliConfig(host, port, user, token);
+        return new CliConfig(host, port, null, token);
     }
 
     /**
@@ -204,7 +192,8 @@ public record CliConfig(String host, int port, String user, String token) {
                         System.out.printf("%s: %s%n", message.getUser(), message.getBody());
                     }
                 }
-            } catch (IOException ignored) {
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }).start();
     }

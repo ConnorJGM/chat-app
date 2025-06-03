@@ -2,6 +2,7 @@
 **/target/
 chat.log
 server_config.properties
+chat.db
 
 # IDE folders
 .vscode/

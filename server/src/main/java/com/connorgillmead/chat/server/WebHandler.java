@@ -24,7 +24,7 @@ public class WebHandler extends ClientHandler implements Closeable {
      * @param username The username of the client.
      */
     public WebHandler(Session session, ChatServerHub hub, String username) {
-        super(null, hub, username);
+        super(null, hub);
         this.session = session;
     }
 
@@ -69,7 +69,9 @@ public class WebHandler extends ClientHandler implements Closeable {
         if (session.isOpen()) {
             try {
                 session.getBasicRemote().sendText(msg.toJson());
-            } catch (IOException ignored) { }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -81,6 +83,8 @@ public class WebHandler extends ClientHandler implements Closeable {
     public void close() {
         try {
             session.close();
-        } catch (IOException ignored) { }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

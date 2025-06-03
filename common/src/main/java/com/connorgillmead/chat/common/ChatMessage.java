@@ -23,6 +23,9 @@ public final class ChatMessage {
     private long   time;
     private String token;
     private List<String> users;
+    private String password;
+    private boolean success;
+    private String message;
 
     // Getters for the fields.
     public String getType() {
@@ -47,6 +50,18 @@ public final class ChatMessage {
 
     public List<String> getUserList() {
         return (List<String>) users;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public String getMessage() {
+        return message;
     }
 
     /**
@@ -156,6 +171,60 @@ public final class ChatMessage {
         ChatMessage m = new ChatMessage();
         m.type = "roster";
         m.users = List.copyOf(users);
+        m.time = System.currentTimeMillis();
+        return m;
+    }
+
+    /**
+     * Creates a new ChatMessage object for user login.
+     * This message type is used to authenticate a user with the server.
+     *
+     * @param username The username of the user trying to log in.
+     * @param password The password of the user trying to log in.
+     * @return A new ChatMessage object with the specified username and password.
+     */
+    public static ChatMessage login(String username, String password) {
+        ChatMessage m = new ChatMessage();
+        m.type = "login";
+        m.user = username;
+        m.password = password;
+        m.time = System.currentTimeMillis();
+        return m;
+    }
+
+    /**
+     * Creates a new ChatMessage object for user registration.
+     * This message type is used to register a new user with the server.
+     *
+     * @param username The username of the user trying to register.
+     * @param password The password of the user trying to register.
+     * @return A new ChatMessage object with the specified username and password.
+     */
+    public static ChatMessage register(String username, String password) {
+        ChatMessage m = new ChatMessage();
+        m.type = "register";
+        m.user = username;
+        m.password = password;
+        m.time = System.currentTimeMillis();
+        return m;
+    }
+
+    /**
+     * Creates a new ChatMessage object for an authorised response.
+     * This message type is used to send a response to an authorised request.
+     *
+     * @param type The type of the response (e.g., "login_response", "register_response").
+     * @param user The user who is receiving the response.
+     * @param success Indicates whether the request was successful or not.
+     * @param responseMessage The message to be sent in the response.
+     * @return A new ChatMessage object with the specified type, user, success status, and response message.
+     */
+    public static ChatMessage authorisedResponse(String type, String user, boolean success, String responseMessage) {
+        ChatMessage m = new ChatMessage();
+        m.type = type;
+        m.user = user;
+        m.success = success;
+        m.message = responseMessage;
         m.time = System.currentTimeMillis();
         return m;
     }

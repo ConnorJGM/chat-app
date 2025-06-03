@@ -4,10 +4,8 @@ package com.connorgillmead.chat.server;
 
 import com.connorgillmead.chat.common.ChatMessage;
 import jakarta.websocket.DeploymentException;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -21,6 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.Scanner;
+import javax.net.ssl.SSLSocket;
 
 /**
  * SerConfig is a record that holds the configuration for the chat server.
@@ -221,7 +220,8 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
             System.out.println("Shutdown requested - closing server socket.");
             try {
                 tcp.close();
-            } catch (IOException ignored) {
+            } catch (IOException e) {
+                e.printStackTrace();
             }
             ChatServerHub.append("[" + Instant.now() + "] SERVER_STOP");
         }, "ChatServerShutdownHook");
@@ -306,55 +306,14 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
             ChatServerHub hub,
             ChatServer tcp) throws IOException {
         while (true) {
-            Socket socket = tcp.awaitConnection();
-
-            // BufferedReader is used to read the input stream from the socket.
-            // It reads the incoming data line by line.
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-
-            // Read the first line from the input stream.
-            // This line is expected to be a JSON message from the client.
-            String firstLine = in.readLine();
-
-            // If the first line is null, it means the client has closed the connection.
-            // In this case, close the socket and continue to the next iteration of the
-            // loop.
-            if (firstLine == null) {
-                socket.close();
-                continue;
-            }
-
-            // Parse the first line as a ChatMessage object.
-            // The ChatMessage class is used to represent messages exchanged between the
-            // server and clients.
-            ChatMessage hello = ChatMessage.fromJson(firstLine);
-
-            // Check if the message is a valid hello message.
-            if (cfg.token() != null && !cfg.token().equals(hello.getToken())) {
-                sendErrorAndClose(socket, "Authentication has failed.");
-                ChatServerHub.append("[%s] AUTH_FAIL from %s"
-                        .formatted(Instant.now(), socket.getRemoteSocketAddress()));
-                continue;
-            }
-
-            // Check for duplicate names.
-            // If the name is already taken, send an error message and close the socket.
-            String user = hello.getUser();
-            if (!hub.reserveName(user)) {
-                sendErrorAndClose(socket, "Username already taken.");
-                continue;
-            }
-
-            // Create a new ChatMessage object to acknowledge the connection.
-            // This message is sent back to the client to confirm the connection.
-            System.out.println(user + " connected on " + socket);
-            hub.broadcast(hello);
+            SSLSocket sslSocket = (SSLSocket) tcp.awaitConnection();
+            sslSocket.setUseClientMode(false);
+            sslSocket.startHandshake();
 
             // Create a new ClientHandler thread to handle the client connection.
             // The ClientHandler is responsible for processing messages from the client
             // and broadcasting them to other connected clients.
-            new Thread(new ClientHandler(socket, hub, user)).start();
+            new Thread(new ClientHandler(sslSocket, hub)).start();
         }
     }
 
@@ -374,11 +333,13 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
         try (PrintWriter pw = new PrintWriter(
                 new OutputStreamWriter(s.getOutputStream(), StandardCharsets.UTF_8), true)) {
             pw.println(ChatMessage.error(msg).toJson());
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         try {
             s.close();
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
