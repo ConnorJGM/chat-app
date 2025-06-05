@@ -193,7 +193,9 @@ public record CliConfig(String host, int port, String user, String token) {
                     }
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                if (!socket.isClosed()) {
+                    System.err.println("Error reading from server: " + e.getMessage());
+                }
             }
         }).start();
     }

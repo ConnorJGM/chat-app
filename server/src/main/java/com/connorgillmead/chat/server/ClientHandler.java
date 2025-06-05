@@ -122,18 +122,13 @@ public class ClientHandler implements Runnable {
                 }
 
                 if ("register".equals(authorisedMessage.getType())) {
-                    System.err.println("SERVER: entered register branch for " + requestUsername);
                     if (Database.userExists(requestUsername)) {
                         send(ChatMessage.authorisedResponse("register_response", requestUsername, false,
                                 "Username already exists. Please try logging in or use a different username."));
                     } else {
-                        // User does not exist, attempt to add to database
                         if (Database.addUser(requestUsername, requestPassword)) {
-                            // User added to DB successfully, now handle session reservation
                             processSuccessfulRegistrationAndReserveName(requestUsername);
                         } else {
-                            // Failed to add user to DB
-                            System.err.println("SERVER: Database.addUser for " + requestUsername + " returned false.");
                             send(ChatMessage.authorisedResponse("register_response", requestUsername, false,
                                     "Failed to register user. "
                                             + "The username might be taken or a server error occurred."));
@@ -177,6 +172,7 @@ public class ClientHandler implements Runnable {
             System.out.println(this.username + " connected from " + socket);
             hub.addClient(this);
             hub.getHistory().forEach(this::send);
+            send(ChatMessage.userList(hub.getUsernames()));
 
             // Read messages from the client and broadcast them to all clients.
             // This loop continues until the client disconnects or an I/O error occurs.
@@ -279,7 +275,7 @@ public class ClientHandler implements Runnable {
             this.username = requestUsername;
             this.authenticated = true;
             send(ChatMessage.authorisedResponse("login_response", requestUsername, true,
-                    "Login successful. Welcome: " + requestUsername + "!"));
+                    "Login successful. Welcome " + requestUsername + "!"));
         } else {
             send(ChatMessage.authorisedResponse("login_response", requestUsername, false,
                     "Invalid username or password."));
@@ -306,9 +302,9 @@ public class ClientHandler implements Runnable {
             System.err.println("SERVER: Registration and name reservation for " + requestUsername
                     + " successful.");
             this.username = requestUsername;
-            this.authenticated = true; // CRUCIAL: Mark as authenticated
+            this.authenticated = true;
             send(ChatMessage.authorisedResponse("register_response", requestUsername, true,
-                    "Registration successful. Welcome: " + requestUsername + "!"));
+                    "Registration successful. Welcome " + requestUsername + "!"));
         }
     }
 }

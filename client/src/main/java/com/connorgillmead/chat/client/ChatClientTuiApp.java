@@ -24,6 +24,9 @@ import com.googlecode.lanterna.screen.Screen;
 import com.googlecode.lanterna.screen.TerminalScreen;
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
 import com.googlecode.lanterna.terminal.swing.AWTTerminalFrame;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
@@ -52,6 +55,7 @@ public final class ChatClientTuiApp {
     private static final int ROW = 60;
     private static final int ROW_LIST = ROW + 4;
     private static final int DRAIN = 100;
+    private static final int MAX_AUTH_ATTEMPTS = 5;
 
     // Private constructor to prevent instantiation.
     private ChatClientTuiApp() {
@@ -89,127 +93,147 @@ public final class ChatClientTuiApp {
                             .setTerminalEmulatorTitle("Chat Client")
                             .setInitialTerminalSize(new TerminalSize(COL, ROW_LIST))
                             .createAWTTerminal();
+        Screen screen = null;
+        MultiWindowTextGUI gui = null;
 
-        frame.pack();
-        frame.setVisible(true);
-        frame.setLocationRelativeTo(null);
+        // Try to create the terminal screen and GUI.
+        // If successful, it will prompt the user for connection details.
+        try {
+            frame.pack();
+            frame.setVisible(true);
+            frame.setLocationRelativeTo(null);
+            screen = new TerminalScreen(frame);
+            screen.startScreen();
+            gui = new MultiWindowTextGUI(screen);
 
-        Screen screen = new TerminalScreen(frame);
-        screen.startScreen();
+            // Finalise the screen and GUI.
+            final Screen finalScreen = screen;
+            final MultiWindowTextGUI finalGui = gui;
 
-        MultiWindowTextGUI gui = new MultiWindowTextGUI(screen);
+            // Resize the window when the terminal is resized.
+            frame.addComponentListener(new ComponentAdapter() {
+                @Override
+                public void componentResized(ComponentEvent e) {
+                    finalGui.getGUIThread().invokeLater(() -> {
+                        finalScreen.doResizeIfNecessary();
+                    });
+                }
+            });
 
-        // Resize the window when the terminal is resized.
-        frame.addComponentListener(new java.awt.event.ComponentAdapter() {
-            @Override
-            public void componentResized(java.awt.event.ComponentEvent e) {
-                gui.getGUIThread().invokeLater(() -> {
-                    screen.doResizeIfNecessary();
-                });
-            }
-        });
+            // Create a holder for the config.
+            AtomicReference<CliConfig> configHolder = new AtomicReference<>();
 
-        // Create a holder for the config.
-        // This is used to store the configuration details entered by the user.
-        AtomicReference<CliConfig> configHolder = new AtomicReference<>();
+            // Build the config window.
+            // This window prompts the user for connection details (host, port, username, and token).
+            final BasicWindow configWindow = new BasicWindow("Connect to Chat Server");
+            Panel form = new Panel(new GridLayout(2));
+            TextBox hostBox  = new TextBox().setText("localhost");
+            TextBox portBox  = new TextBox().setText(String.valueOf(CliConfig.defaultPort()));
+            TextBox tokenBox = new TextBox();
+            form.addComponent(new Label("Host:"));
+            form.addComponent(hostBox);
+            form.addComponent(new Label("Port:"));
+            form.addComponent(portBox);
+            form.addComponent(new Label("Token (optional):"));
+            form.addComponent(tokenBox);
 
-        // Build the config window.
-        // This window prompts the user for connection details (host, port, username, and token).
-        // It uses a GridLayout to arrange the components in a grid.
-        final BasicWindow configWindow = new BasicWindow("Connect to Chat");
-        Panel form = new Panel(new GridLayout(2));
-        TextBox hostBox  = new TextBox().setText("localhost");
-        TextBox portBox  = new TextBox().setText(String.valueOf(CliConfig.defaultPort()));
-        TextBox userBox  = new TextBox();
-        TextBox tokenBox = new TextBox();
+            // This button is used to connect to the chat server.
+            Button connect = new Button("Connect", () -> {
+                try {
+                    String host  = hostBox .getText().trim();
+                    int    port  = Integer.parseInt(portBox.getText().trim());
+                    String token = tokenBox.getText().trim().isEmpty()
+                                ? null
+                                : tokenBox.getText().trim();
 
-        // Add labels and text boxes to the form.
-        // The labels are used to describe the purpose of each text box.
-        form.addComponent(new Label("Host:"));
-        form.addComponent(hostBox);
-        form.addComponent(new Label("Port:"));
-        form.addComponent(portBox);
-        form.addComponent(new Label("Username:"));
-        form.addComponent(userBox);
-        form.addComponent(new Label("Token (opt):"));
-        form.addComponent(tokenBox);
+                    // This is used to store the configuration details entered by the user.
+                    CliConfig temporaryConfig = CliConfig.validateCreate(host, port, "temporaryUser", token);
+                    configHolder.set(temporaryConfig);
+                    configWindow.close();
 
-        // Add a connect button to the form.
-        // This button is used to connect to the chat server.
-        Button connect = new Button("Connect", () -> {
-            try {
-                String host  = hostBox .getText().trim();
-                int    port  = Integer.parseInt(portBox.getText().trim());
-                String user  = userBox .getText().trim();
-                String token = tokenBox.getText().trim().isEmpty()
-                            ? null
-                            : tokenBox.getText().trim();
+                // If the user does not enter a valid host, port, or username,
+                // show an error message dialog.
+                } catch (NumberFormatException ex) {
+                    new MessageDialogBuilder()
+                            .setTitle("Invalid Port")
+                            .setText("Port must be a number between 1 and 65535.")
+                            .addButton(MessageDialogButton.OK)
+                            .build()
+                            .showDialog(finalGui);
+                } catch (IllegalArgumentException e) {
+                    new MessageDialogBuilder()
+                            .setTitle("Invalid Input")
+                            .setText(e.getMessage())
+                            .addButton(MessageDialogButton.OK)
+                            .build()
+                            .showDialog(finalGui);
+                }
+            });
 
-                // Set the config in the holder.
-                // This is used to store the configuration details entered by the user.
-                CliConfig cfg = CliConfig.validateCreate(host, port, user, token);
-                configHolder.set(cfg);
-                configWindow.close();
+            // Press ESC to quit.
+            configWindow.addWindowListener(new WindowListenerAdapter() {
+                @Override
+                public void onUnhandledInput(Window w, KeyStroke k, AtomicBoolean handled) {
+                    if (k.getKeyType() == KeyType.Escape) {
+                        handled.set(true);
+                        askQuit(finalGui, configWindow, null, null, finalScreen);
+                    }
+                }
+            });
 
-            // If the user does not enter a valid host, port, or username,
-            // show an error message dialog.
-            } catch (NumberFormatException ex) {
-                new MessageDialogBuilder()
-                        .setTitle("Invalid Port")
-                        .setText("Port must be a number between 1 and 65535.")
-                        .addButton(MessageDialogButton.OK)
-                        .build()
-                        .showDialog(gui);
-            } catch (IllegalArgumentException e) {
-                new MessageDialogBuilder()
-                        .setTitle("Invalid Input")
-                        .setText(e.getMessage())
-                        .addButton(MessageDialogButton.OK)
-                        .build()
-                        .showDialog(gui);
-            }
-        });
+            // Add empty space and the connect button to the form.
+            form.addComponent(
+                new EmptySpace(new TerminalSize(0, 1)),
+                    GridLayout.createHorizontallyFilledLayoutData(2)
+            );
+            form.addComponent(
+                connect,
+                GridLayout.createHorizontallyEndAlignedLayoutData(2)
+            );
+            configWindow.setComponent(form);
+            finalGui.addWindowAndWait(configWindow);
 
-        // Press ESC to quit.
-        // This is done to allow the user to quit the application using the ESC key.
-        configWindow.addWindowListener(new WindowListenerAdapter() {
-            @Override
-            public void onUnhandledInput(Window w, KeyStroke k, AtomicBoolean handled) {
-                if (k.getKeyType() == KeyType.Escape) {
-                    handled.set(true);
-                    askQuit(gui, configWindow, null, null, screen);
+            // This is the configuration details entered by the user.
+            CliConfig intialConfig = configHolder.get();
+            try (ChatClient chatClient = new ChatClient(intialConfig.host(),
+                                        intialConfig.port())) {
+                Socket socket = chatClient.socket();
+                PrintWriter output = new PrintWriter(
+                    socket.getOutputStream(), true, StandardCharsets.UTF_8);
+                BufferedReader input = new BufferedReader(
+                    new java.io.InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+
+                AtomicReference<String> authenticatedUser = new AtomicReference<>();
+                boolean autheticationSuccess = TuiAuthenticator.authenticate(
+                    finalGui, finalScreen, output, input, authenticatedUser, MAX_AUTH_ATTEMPTS);
+
+                if (autheticationSuccess && authenticatedUser.get() != null) {
+                    CliConfig finalConfig = CliConfig.validateCreate(intialConfig.host(), intialConfig.port(),
+                                                authenticatedUser.get(), intialConfig.token());
+                    launchChatGui(finalGui, finalScreen, finalConfig, frame, socket, output, input);
+                } else {
+                    if (gui != null) {
+                        new MessageDialogBuilder()
+                            .setTitle("Authentication Failed")
+                            .setText("Could not authenticate with the server. Please check your credentials.")
+                            .addButton(MessageDialogButton.OK)
+                            .build()
+                            .showDialog(finalGui);
+                    }
                 }
             }
-        });
-
-        // Add empty space and the connect button to the form.
-        // This is done to separate the components in the form.
-        form.addComponent(
-            new EmptySpace(new TerminalSize(0, 1)),
-                GridLayout.createHorizontallyFilledLayoutData(2)
-        );
-        form.addComponent(
-            connect,
-            GridLayout.createHorizontallyEndAlignedLayoutData(2)
-        );
-
-        // Set the form to the config window.
-        // This window is used to prompt the user for connection details.
-        configWindow.setComponent(form);
-
-        // Block until the user clicks connect.
-        gui.addWindowAndWait(configWindow);
-
-        // Fit the window to the content.
-        frame.pack();
-        screen.doResizeIfNecessary();
-
-        // Get the config from the holder.
-        // This is the configuration details entered by the user.
-        CliConfig cfg = configHolder.get();
-
-        // Launch the chat GUI.
-        launchChatGui(gui, screen, cfg, frame);
+        } finally {
+            if (screen != null) {
+                try {
+                    screen.stopScreen();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (frame != null) {
+                frame.dispose();
+            }
+        }
     }
 
     /**
@@ -220,15 +244,10 @@ public final class ChatClientTuiApp {
      * @param screen The screen to use.
      * @param cfg The configuration object containing host, port, user, and token information.
      */
-    private static void launchChatGui(MultiWindowTextGUI gui, Screen screen, CliConfig cfg, AWTTerminalFrame frame) {
-        try (ChatClient client = new ChatClient(cfg.host(), cfg.port())) {
-            Socket socket = client.socket();
-
-            // Thread A – send messages.
-            // This thread sends messages to the server.
-            PrintWriter out = new PrintWriter(
-                socket.getOutputStream(), true, StandardCharsets.UTF_8);
-
+    private static void launchChatGui(MultiWindowTextGUI gui, Screen screen,
+                                      CliConfig cfg, AWTTerminalFrame frame, Socket socket,
+                                      PrintWriter output, BufferedReader input) {
+        try {
             // Thread B – receive messages.
             // This thread reads messages from the server and puts them into a blocking queue.
             BlockingQueue<ChatMessage> inbound = new LinkedBlockingQueue<>();
@@ -236,7 +255,7 @@ public final class ChatClientTuiApp {
 
             // Create a new BasicWindow object to display the chat interface.
             // This window is used to display the chat messages and user input.
-            BasicWindow window = new BasicWindow("Chat - " + cfg.host());
+            BasicWindow window = new BasicWindow("Chat - " + cfg.host() + " - User: " + cfg.user());
 
             // New panel for the chat interface.
             // This panel is used to arrange the components in the window.
@@ -266,7 +285,7 @@ public final class ChatClientTuiApp {
 
             // Handles input from the user.
             // This text box is used to get user input.
-            TextBox input = new TextBox() {
+            TextBox userInput = new TextBox() {
                 @Override public Result handleKeyStroke(KeyStroke k) {
                     if (k.getKeyType() == KeyType.Enter) {
                         String msg = getText().trim();
@@ -275,7 +294,7 @@ public final class ChatClientTuiApp {
                                 askQuit(gui, null, this, socket, screen);
                             });
                         } else if (!msg.isEmpty()) {
-                            out.println(ChatMessage.of(cfg.user(), msg).toJson());
+                            output.println(ChatMessage.of(cfg.user(), msg).toJson());
                         }
                         setText("");
                         return Result.HANDLED;
@@ -283,7 +302,7 @@ public final class ChatClientTuiApp {
                     return super.handleKeyStroke(k);
                 }
             }.setPreferredSize(new TerminalSize(COL, 1));
-            root.addComponent(input, BorderLayout.Location.BOTTOM);
+            root.addComponent(userInput, BorderLayout.Location.BOTTOM);
 
             // Create a new TextBox object to display the chat messages.
             // This text box is used to display the chat messages in a multi-line format.
@@ -293,19 +312,21 @@ public final class ChatClientTuiApp {
                 @Override
                 public Result handleKeyStroke(KeyStroke k) {
                     switch (k.getKeyType()) {
-                        case Tab -> {
-                            gui.getGUIThread().invokeLater(input::takeFocus);
+                        case Tab:
+                            gui.getGUIThread().invokeLater(userInput::takeFocus);
                             return Result.HANDLED;
-                        }
-                        case ArrowUp, ArrowDown, ArrowLeft, ArrowRight, PageUp, PageDown, Home, End -> {
+                        case ArrowUp:
+                        case ArrowDown:
+                        case ArrowLeft:
+                        case ArrowRight:
+                        case PageUp:
+                        case PageDown:
+                        case Home:
+                        case End:
                             return super.handleKeyStroke(k);
-                        }
-                        default -> {
+                        default:
                             // Ignore all other keys.
-                            // This is done to prevent the user from typing in the log box.
                             return Result.UNHANDLED;
-
-                        }
                     }
                 }
             };
@@ -318,13 +339,10 @@ public final class ChatClientTuiApp {
                 public void onUnhandledInput(Window w, KeyStroke k, AtomicBoolean handled) {
                     if (k.getKeyType() == KeyType.Escape) {
                         handled.set(true);
-                        askQuit(gui, window, input, socket, screen);
+                        askQuit(gui, window, userInput, socket, screen);
                     }
                 }
             });
-
-            // Set root panel to the window.
-            // This panel is used to arrange the components in the window.
             window.setComponent(root);
 
             // Set the size of the window.
@@ -333,15 +351,14 @@ public final class ChatClientTuiApp {
 
             // Focus on the input box.
             // This is done to allow the user to start typing immediately.
-            gui.getGUIThread().invokeLater(input::takeFocus);
+            gui.getGUIThread().invokeLater(userInput::takeFocus);
 
             // Notify the server that the user has joined the chat.
-            // This is done by sending a "hello" message to the server.
-            out.println(ChatMessage.hello(cfg.user(), cfg.token()).toJson());
+            output.println(ChatMessage.hello(cfg.user(), cfg.token()).toJson());
 
             // Create a new DrainCtx object to hold the context for draining messages.
             // This context contains references to the GUI, window, input box, log, and user list.
-            DrainCtx ctx = new DrainCtx(gui, window, input, log, userList, socket, screen);
+            DrainCtx ctx = new DrainCtx(gui, window, userInput, log, userList, socket, screen);
 
             // Start the message drain loop.
             // This loop reads messages from the server and displays them in the chat interface.
@@ -356,15 +373,22 @@ public final class ChatClientTuiApp {
                            DRAIN);
 
             // Close the socket when the window is closed.
-            // This is done to release any resources associated with the socket.
             gui.addWindowAndWait(window);
-            socket.close();
-
-        // Catch any exceptions that occur during the process.
-        // This includes GeneralSecurityException and IOException.
-        } catch (IOException | GeneralSecurityException e) {
-            e.printStackTrace();
-            System.exit(1);
+        } finally {
+            if (socket != null && !socket.isClosed()) {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (screen != null) {
+                try {
+                    screen.stopScreen();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
@@ -391,7 +415,7 @@ public final class ChatClientTuiApp {
             e.printStackTrace();
         }
         try {
-            if (screen != null) {
+            if (screen != null && gui != null && gui.getActiveWindow() == screen) {
                 screen.stopScreen();
             }
         } catch (IOException e) {

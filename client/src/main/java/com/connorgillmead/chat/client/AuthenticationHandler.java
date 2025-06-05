@@ -101,18 +101,16 @@ public class AuthenticationHandler {
             }
             ChatMessage response = ChatMessage.fromJson(responseLine);
 
-            System.out.println("Server " + response.getMessage());
+            System.out.println("Server: " + response.getMessage());
 
             if (response.isSuccess()) {
                 switch (response.getType()) {
                     case "login_response" -> {
                         authenticated = true;
                         authenticatedUsername = tentativeUsername;
-                        System.out.println("Login successful. Welcome, " + this.authenticatedUsername + "!");
                     }
 
                     case "register_response" -> {
-                        System.out.println("Registration successful. Welcome, " + tentativeUsername + ".");
                         authenticated = true;
                         authenticatedUsername = tentativeUsername;
                     }
