@@ -1,30 +1,67 @@
-
-<div class="container py-4">
+<div class="container-fluid py-4">
     <div class="row gx-2">
-        <div class="col-md-8">
+        <div class="col-md-9">
             <div class="card shadow mb-3">
                 <div class="card-body">
                     <h2 class="card-title text-center mb-4">Web Chat</h2>
-                    <div id="chatlog" class="mb-3"></div>
-                    <form id="connectForm" class="row g-2 mb-3" onsubmit="connect(); return false;">
-                        <div class="col-5">
-                            <input type="text" id="user" class="form-control"
-                            placeholder="Username" required>
+                    <div id="chatLog" class="mb-3 border rounded p-2" style="height:50rem; overflow-y:auto; white-space:pre-line;"></div>
+                    <div id="authenticateArea">
+                        <ul class="nav nav-tabs mb-3" id="authenticateTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="login-tab" data-bs-toggle="tab"
+                                    data-bs-target="#login-panel" type="button" role="tab" aria-controls="login-panel"
+                                    aria-selected="true">Login</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="register-tab" data-bs-toggle="tab"
+                                    data-bs-target="#register-panel" type="button" role="tab"
+                                    aria-controls="register-panel" aria-selected="false">Register</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="authenticateTabsContent">
+                            <div class="tab-pane fade show active" id="login-panel" role="tabpanel"
+                                aria-labelledby="login-tab">
+                                <form id="loginForm" class="row gx-2 mb-3 align-items-center"
+                                    style="display: flex; gap: 0.5rem;">
+                                    <div class="col-md-3">
+                                        <input type="text" id="loginUser" class="form-control" placeholder="Username"
+                                            required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="password" id="loginPassword" class="form-control"
+                                            placeholder="Password" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input id="loginToken" class="form-control"
+                                            placeholder="Access Token (optional)" autocomplete="off">
+                                    </div>
+                                    <div class="col-md-2 d-grid">
+                                        <button type="submit" class="btn btn-primary" id="loginButton">Login</button>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="tab-pane fade" id="register-panel" role="tabpanel"
+                                aria-labelledby="register-tab">
+                                <form id="registerForm" class="row g-2 mb-3">
+                                    <div class="col-md-5">
+                                        <input type="text" id="registerUser" class="form-control" placeholder="Username"
+                                            required>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <input type="password" id="registerPassword" class="form-control"
+                                            placeholder="Password" required>
+                                    </div>
+                                    <div class="col-md-2 d-grid">
+                                        <button type="submit" class="btn btn-primary"
+                                            id="registerButton">Register</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
-                        <div class="col-5">
-                            <input type="text" id="token" class="form-control"
-                            placeholder="Token (if required)">
-                        </div>
-                        <div class="col-2 d-grid">
-                            <button type="submit" class="btn btn-primary"
-                            id="connectBtn">Connect</button>
-                        </div>
-                    </form>
-                    <form id="chatArea" class="row g-2" style="display:none;"
-                    onsubmit="sendMsg(); return false;">
+                    </div>
+                    <form id="chatArea" class="row g-2" style="display:none;" onsubmit="sendMsg(); return false;">
                         <div class="col-10">
-                            <input type="text" id="body" class="form-control"
-                            placeholder="Type a message..." required autocomplete="off">
+                            <input type="text" id="body" class="form-control" placeholder="Type a message..." required>
                         </div>
                         <div class="col-2 d-grid">
                             <button type="submit" class="btn btn-success">Send</button>
@@ -33,7 +70,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card shadow">
                 <div class="card-body">
                     <h5 class="card-title">Connected Users</h5>
@@ -43,77 +80,209 @@
         </div>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    let ws, user, token;
+    let ws, loggedInUser, sessionToken;
     let kicked = false;
 
-    function connect() {
-        user = document.getElementById("user").value;
-        token = document.getElementById("token").value;
-        ws = new WebSocket("ws://" + location.hostname + ":8081/wschat");
+    ws = new WebSocket("ws://" + location.hostname + ":8081/wschat");
 
-        ws.onopen = function() {
-            ws.send(JSON.stringify({type: "hello", user: user, token: token}));
-            document.getElementById("chatArea").style.display = "";
-            document.getElementById("connectBtn").disabled = true;
-            document.getElementById("user").readOnly = true;
-            document.getElementById("token").readOnly = true;
-        };
+    ws.onopen = function () {
+        console.log("WebSocket connection established.");
+    };
 
-        ws.onmessage = function(event) {
-            const m = JSON.parse(event.data);
-            switch(m.type) {
-                case "roster": {
-                    const ul = document.getElementById("userList");
-                    ul.innerHTML = "";
-                    (m.users||[]).forEach(u => {
-                        const li = document.createElement("li");
-                        li.textContent = u;
-                        li.className = "list-group-item";
-                        ul.appendChild(li);
-                    });
-                    break;
+    ws.onmessage = function (event) {
+        const m = JSON.parse(event.data);
+        switch (m.type) {
+            case "login_response":
+                if (m.success) {
+                    loggedInUser = m.user;
+                    sessionToken = m.token;
+
+                    document.getElementById("authenticateArea").style.display = "none";
+                    document.getElementById("chatArea").style.display = "";
+                    document.getElementById("body").focus();
+
+                    ws.send(JSON.stringify({ 
+                        type: "hello",
+                        user: loggedInUser,
+                        token: sessionToken    
+                    }));
+
+                    alert("Login successful! Welcome, " + loggedInUser + ".");
+                } else {
+                    alert("Login failed: " + m.message);
                 }
-                case "text": {
-                    const log = document.getElementById("chatlog");
-                    const div = document.createElement("div");
-                    div.textContent = `${m.user}: ${m.body}`;
-                    log.appendChild(div);
-                    log.scrollTop = log.scrollHeight;
-                    break;
+                break;
+            case "register_response":
+                if (m.success) {
+                    alert(m.message || "Registration successful! You can now log in.");
+                    var loginTab = new bootstrap.Tab(document.getElementById("login-tab"));
+                    loginTab.show();
+                    document.getElementById("registerForm").reset();
+                } else {
+                    alert("Registration failed: " + m.message);
                 }
-                case "kick": {
-                    const log = document.getElementById("chatlog");
-                    const div = document.createElement("div");
-                    div.textContent = m.body;
-                    div.className = "text-danger fw-bold";
-                    log.appendChild(div);
-                    kicked = true;
-                    ws.close();
-                    break;
-                }
+                break;
+            case "roster": {
+                const ul = document.getElementById("userList");
+                ul.innerHTML = "";
+                (m.users || []).forEach(u => {
+                    const li = document.createElement("li");
+                    li.textContent = u;
+                    li.className = "list-group-item";
+                    ul.appendChild(li);
+                });
+                break;
             }
-        };
+            case "text": {
+                const log = document.getElementById("chatLog");
+                const div = document.createElement("div");
+                div.textContent = `${m.user}: ${m.body}`;
+                log.appendChild(div);
+                log.scrollTop = log.scrollHeight;
+                break;
+            }
+            case "kick": {
+                const log = document.getElementById("chatLog");
+                const div = document.createElement("div");
+                div.textContent = m.body;
+                div.className = "text-danger fw-bold";
+                log.appendChild(div);
+                kicked = true;
+                if (ws) ws.close();
+                break;
+            }
+        }
+    };
 
-        ws.onclose = function() {
-            if (kicked) {
-                document.getElementById("chatArea").style.display = "none";
+    ws.onclose = function () {
+        document.getElementById("authenticateArea").style.display = "";
+        document.getElementById("enterChatForm").style.display = "none";
+        document.getElementById("chatArea").style.display = "none";
+        document.getElementById("userList").innerHTML = "";
+        if (!kicked) {
+            document.getElementById("chatLog").innerHTML = "";
+        }
+        loggedInUser = null;
+        sessionToken = null;
+        kicked = false;
+        ws = null;
+    };
+
+    ws.onerror = function (error) {
+        console.error("WebSocket error:", error);
+        alert("An error occurred with the WebSocket connection. Please try refreshing the page.");
+        document.getElementById("authenticateArea").style.display = "";
+        document.getElementById("enterChatForm").style.display = "none";
+        document.getElementById("chatArea").style.display = "none";
+        ws = null;
+    };
+
+    async function ensureWebSocketConnected() {
+        if (!ws) {
+            return Promise.reject(new Error("WebSocket is not initialised, please refresh the page."));
+        }
+
+        if (ws.readyState === WebSocket.OPEN) {
+            return Promise.resolve();
+        }
+
+        if (ws.readyState === WebSocket.CONNECTING) {
+            return new Promise((resolve, reject) => {
+                const tempOnOpen = () => {
+                    cleanup();
+                    resolve();
+                };
+
+                const tempOnError = (error) => {
+                    cleanup();
+                    reject(new Error("WebSocket connection failed: " + error));
+                };
+
+                const cleanup = () => {
+                    ws.removeEventListener("open", tempOnOpen);
+                    ws.removeEventListener("error", tempOnError);
+                };
+
+                ws.addEventListener("open", tempOnOpen);
+                ws.addEventListener("error", tempOnError);
+
+                setTimeout(() => {
+                    cleanup();
+                    reject(new Error("WebSocket connection timed out."));
+                }, 10000);
+            });
+        }
+        return Promise.reject(new Error(`WebSocket is not open (state: ${ws.readyState}), please refresh the page.`));
+    }
+
+    async function loginUser() {
+        try {
+            await ensureWebSocketConnected();
+            const username = document.getElementById("loginUser").value;
+            const password = document.getElementById("loginPassword").value;
+            if (!username || !password) {
+                alert("Please enter both username and password.");
                 return;
             }
-            document.getElementById("chatArea").style.display = "none";
-            document.getElementById("connectBtn").disabled = false;
-            document.getElementById("user").readOnly = false;
-            document.getElementById("token").readOnly = false;
-            document.getElementById("user").value = "";
-            document.getElementById("token").value = "";
-            document.getElementById("chatlog").innerHTML = "";
-            document.getElementById("userList").innerHTML = "";
-        };
+            const token = document.getElementById("loginToken").value.trim();
+
+            const loginMessage = {
+                type: "login",
+                user: username,
+                password: password,
+                token: token
+            };
+            ws.send(JSON.stringify(loginMessage));
+        } catch (error) {
+            console.error("Error during login:", error);
+            alert("An error occurred during login. Please try again.");
+        }
     }
+
+    async function registerUser() {
+        try {
+            await ensureWebSocketConnected();
+            const username = document.getElementById("registerUser").value;
+            const password = document.getElementById("registerPassword").value;
+            if (!username || !password) {
+                alert("Please enter both username and password.");
+                return;
+            }
+            const registerMessage = {
+                type: "register",
+                user: username,
+                password: password
+            };
+            ws.send(JSON.stringify(registerMessage));
+        } catch (error) {
+            console.error("Error during registration:", error);
+            alert("An error occurred during registration. Please try again.");
+        }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("loginForm")
+            .addEventListener("submit", e => {
+                e.preventDefault();
+                loginUser();
+            });
+        document.getElementById("registerForm")
+            .addEventListener("submit", e => {
+                e.preventDefault();
+                registerUser();
+            });
+    });
+
     function sendMsg() {
         let body = document.getElementById("body").value;
-        if (!body || ws.readyState !== WebSocket.OPEN) return;
-        ws.send(JSON.stringify({type: "text", user: user, body: body}));
+        if (!body || !ws || ws.readyState !== WebSocket.OPEN || !loggedInUser) return;
+        ws.send(JSON.stringify({ type: "text", user: loggedInUser, body: body }));
         document.getElementById("body").value = "";
     }
+
+    window.onload = function () {
+        console.log("Chat page loaded. Initializing WebSocket connection...");
+    };
 </script>

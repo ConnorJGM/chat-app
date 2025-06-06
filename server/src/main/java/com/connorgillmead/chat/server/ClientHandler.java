@@ -137,7 +137,17 @@ public class ClientHandler implements Runnable {
                     continue;
 
                 } else if ("login".equals(authorisedMessage.getType())) {
+                    String requiredToken = hub.getToken();
+                    if (requiredToken != null && !requiredToken.isBlank()
+                            && !requiredToken.equals(authorisedMessage.getToken())) {
+                        send(ChatMessage.authorisedResponse(
+                                "login_response",
+                                requestUsername, false,
+                                "Invalid token"));
+                        continue;
+                    }
                     loginAttempt(requestUsername, requestPassword);
+                    continue;
                 } else {
                     send(ChatMessage.authorisedResponse(authorisedMessage.getType(), requestUsername, false,
                             "Registration failed."));
@@ -174,30 +184,8 @@ public class ClientHandler implements Runnable {
             hub.getHistory().forEach(this::send);
             send(ChatMessage.userList(hub.getUsernames()));
 
-            // Read messages from the client and broadcast them to all clients.
-            // This loop continues until the client disconnects or an I/O error occurs.
-            String line;
-            while ((line = in.readLine()) != null) {
-                ChatMessage message = ChatMessage.fromJson(line);
-                // Check commands via help command.
-                // The command format is "help".
-                if (CommandHelper.command(message, hub, this)) {
-                    continue;
-                }
-                if ("text".equals(message.getType())) {
-                    ChatMessage text = ChatMessage.of(this.username, message.getBody());
-                    hub.broadcast(text);
-                } else if ("bye".equals(message.getType())) {
-                    // If the message type is "bye", handle client disconnection.
-                    hub.broadcast(ChatMessage.bye(this.username));
-                    break; // Exit the loop to close the connection.
-                } else if ("hello".equals(message.getType())) {
-                    hub.broadcast(ChatMessage.hello(this.username, message.getToken()));
-                } else {
-                    // If the message type is not recognized, send an error response.
-                    send(ChatMessage.error("Unknown message type: " + message.getType()));
-                }
-            }
+            handleClientMessages(in);
+
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -305,6 +293,92 @@ public class ClientHandler implements Runnable {
             this.authenticated = true;
             send(ChatMessage.authorisedResponse("register_response", requestUsername, true,
                     "Registration successful. Welcome " + requestUsername + "!"));
+        }
+    }
+
+    /**
+     * Handles messages from the client.
+     * This method reads messages from the client, processes them, and sends
+     * responses back to the client.
+     * It continues to read messages until the client disconnects or an I/O error
+     * occurs.
+     *
+     * @param input The BufferedReader for reading messages from the client.
+     * @throws IOException If an I/O error occurs while reading from the client.
+     */
+    private void handleClientMessages(BufferedReader input) throws IOException {
+        // Read messages from the client and broadcast them to all clients.
+        // This loop continues until the client disconnects or an I/O error occurs.
+        String line;
+        while ((line = input.readLine()) != null) {
+            ChatMessage message = ChatMessage.fromJson(line);
+
+            switch (message.getType()) {
+                case "register" -> {
+                    String requiredToken = hub.getToken();
+                    if (requiredToken != null && !requiredToken.isBlank()
+                            && !requiredToken.equals(message.getToken())) {
+                        send(ChatMessage.authorisedResponse(
+                                "register_response",
+                                message.getUser(), false,
+                                "Invalid token"));
+                        continue;
+                    }
+                    if (Database.userExists(message.getUser())) {
+                        send(ChatMessage.authorisedResponse("register_response", message.getUser(), false,
+                                "Username already exists. Please try logging in or use a different username."));
+                    } else {
+                        if (Database.addUser(message.getUser(), message.getPassword())) {
+                            processSuccessfulRegistrationAndReserveName(message.getUser());
+                        } else {
+                            send(ChatMessage.authorisedResponse("register_response", message.getUser(), false,
+                                    "Failed to register user. "
+                                            + "The username might be taken or a server error occurred."));
+                        }
+                    }
+                    continue;
+                }
+                case "login" -> {
+                    String requiredToken = hub.getToken();
+                    if (requiredToken != null && !requiredToken.isBlank()
+                            && !requiredToken.equals(message.getToken())) {
+                        send(ChatMessage.authorisedResponse(
+                                "login_response",
+                                message.getUser(), false,
+                                "Invalid token"));
+                        continue;
+                    }
+                    loginAttempt(message.getUser(), message.getPassword());
+                    continue;
+                }
+                case "hello" -> {
+                    String requiredToken = hub.getToken();
+                    if (requiredToken != null && !requiredToken.isBlank()
+                            && !requiredToken.equals(message.getToken())) {
+                        send(ChatMessage.error("Invalid token"));
+                        socket.close();
+                        return;
+                    }
+                    hub.broadcast(ChatMessage.hello(message.getUser(), message.getToken()));
+                    continue;
+                }
+                case "text" -> {
+                    if (CommandHelper.command(message, hub, this)) {
+                        continue;
+                    }
+                    ChatMessage text = ChatMessage.of(this.username, message.getBody());
+                    hub.broadcast(text);
+                    continue;
+                }
+                case "bye" -> {
+                    hub.broadcast(ChatMessage.bye(this.username));
+                    break;
+                }
+                default -> {
+                    send(ChatMessage.error("Unknown message type: " + message.getType()));
+                    continue;
+                }
+            }
         }
     }
 }

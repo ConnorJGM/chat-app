@@ -1,3 +1,5 @@
+// Database.java
+
 package com.connorgillmead.chat.server.database;
 
 import java.io.FileNotFoundException;

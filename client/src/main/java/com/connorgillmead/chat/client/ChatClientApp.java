@@ -69,7 +69,7 @@ public final class ChatClientApp {
 
             System.out.println("Connected to chat server at " + cfg.host() + ":" + cfg.port());
 
-            AuthenticationHandler authenticationHandler = new AuthenticationHandler(console, out, input);
+            AuthenticationHandler authenticationHandler = new AuthenticationHandler(console, out, input, cfg.token());
             boolean authenticated = authenticationHandler.authenticate();
             if (!authenticated) {
                 System.err.println("Authentication failed. Exiting.");
@@ -77,6 +77,7 @@ public final class ChatClientApp {
             }
 
             String authenticatedUsername = authenticationHandler.getAuthenticatedUsername();
+            String token = authenticationHandler.getToken();
             if (authenticatedUsername == null || authenticatedUsername.isEmpty()) {
                 System.err.println("No username provided. Exiting.");
                 return;
@@ -86,7 +87,7 @@ public final class ChatClientApp {
             CliConfig.startReader(socket, authenticatedUsername);
 
             // Notify the server that the user has joined the chat.
-            out.println(ChatMessage.hello(authenticatedUsername, cfg.token()).toJson());
+            out.println(ChatMessage.hello(authenticatedUsername, token).toJson());
 
             // This thread reads user input from the console and sends it to the server.
             // It runs in a loop until the user enters "exit" or an I/O error occurs.

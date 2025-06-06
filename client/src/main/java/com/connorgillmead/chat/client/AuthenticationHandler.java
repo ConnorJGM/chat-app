@@ -1,3 +1,5 @@
+// AuthenticationHandler.java
+
 package com.connorgillmead.chat.client;
 
 import com.connorgillmead.chat.common.ChatMessage;
@@ -19,6 +21,7 @@ public class AuthenticationHandler {
     private final PrintWriter output;
     private final BufferedReader input;
     private String authenticatedUsername;
+    private String token;
 
     /**
      * Constructor for AuthenticationHandler.
@@ -30,10 +33,21 @@ public class AuthenticationHandler {
      * @param output  The PrintWriter object to send messages to the server.
      * @param input   The BufferedReader object to read responses from the server.
      */
-    public AuthenticationHandler(Scanner scanner, PrintWriter output, BufferedReader input) {
+    public AuthenticationHandler(Scanner scanner, PrintWriter output, BufferedReader input, String token) {
         this.scanner = scanner;
         this.output = output;
         this.input = input;
+        this.token = token;
+    }
+
+    /**
+     * Returns the token used for authentication.
+     * This method is called after a successful authentication to retrieve the token.
+     *
+     * @return The token used for authentication, or null if not set.
+     */
+    public String getToken() {
+        return token;
     }
 
     /**
@@ -51,7 +65,7 @@ public class AuthenticationHandler {
         int attempts = 0;
         boolean authenticated = false;
 
-        while (attempts < MAX_AUTH_ATTEMPTS && !authenticated) {
+        while (attempts <= MAX_AUTH_ATTEMPTS && !authenticated) {
             System.out.println("Choose action: [1] Login, [2] Register, [3] Exit");
             String choice = scanner.nextLine().trim();
             String username;
@@ -66,6 +80,9 @@ public class AuthenticationHandler {
                     System.out.print("Enter password: ");
                     password = scanner.nextLine().trim();
                     authorisationRequest = ChatMessage.login(username, password);
+                    if (token != null && !token.isBlank()) {
+                        authorisationRequest.setToken(token);
+                    }
                     tentativeUsername = username;
                     break;
 
@@ -75,6 +92,9 @@ public class AuthenticationHandler {
                     System.out.print("Enter new password: ");
                     password = scanner.nextLine().trim();
                     authorisationRequest = ChatMessage.register(username, password);
+                    if (token != null && !token.isBlank()) {
+                        authorisationRequest.setToken(token);
+                    }
                     tentativeUsername = username;
                     break;
 
@@ -88,10 +108,6 @@ public class AuthenticationHandler {
                     continue;
             }
 
-            if (authorisationRequest == null) {
-                continue;
-            }
-
             output.println(authorisationRequest.toJson());
             output.flush();
             String responseLine = input.readLine();
@@ -102,6 +118,12 @@ public class AuthenticationHandler {
             ChatMessage response = ChatMessage.fromJson(responseLine);
 
             System.out.println("Server: " + response.getMessage());
+
+            if (!response.isSuccess() && isTokenEror(response.getMessage())) {
+                System.out.println("Invalid token. Please re-enter your token.");
+                promptForToken();
+                continue;
+            }
 
             if (response.isSuccess()) {
                 switch (response.getType()) {
@@ -140,5 +162,19 @@ public class AuthenticationHandler {
      */
     public String getAuthenticatedUsername() {
         return authenticatedUsername;
+    }
+
+    private static boolean isTokenEror(String message) {
+        return message != null && message.toLowerCase().contains("token");
+    }
+
+    private void promptForToken() {
+        System.out.println("Please enter your token:");
+        String enteredToken = scanner.nextLine().trim();
+        while (enteredToken.isBlank()) {
+            System.out.println("Token cannot be empty. Please enter your token:");
+            enteredToken = scanner.nextLine().trim();
+        }
+        this.token = enteredToken;
     }
 }

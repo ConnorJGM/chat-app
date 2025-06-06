@@ -123,7 +123,6 @@ public final class ChatClientTuiApp {
             // Create a holder for the config.
             AtomicReference<CliConfig> configHolder = new AtomicReference<>();
 
-            // Build the config window.
             // This window prompts the user for connection details (host, port, username, and token).
             final BasicWindow configWindow = new BasicWindow("Connect to Chat Server");
             Panel form = new Panel(new GridLayout(2));
@@ -204,12 +203,13 @@ public final class ChatClientTuiApp {
                     new java.io.InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
 
                 AtomicReference<String> authenticatedUser = new AtomicReference<>();
+                AtomicReference<String> tokenReference = new AtomicReference<>(intialConfig.token());
                 boolean autheticationSuccess = TuiAuthenticator.authenticate(
-                    finalGui, finalScreen, output, input, authenticatedUser, MAX_AUTH_ATTEMPTS);
+                    finalGui, finalScreen, output, input, authenticatedUser, tokenReference, MAX_AUTH_ATTEMPTS);
 
                 if (autheticationSuccess && authenticatedUser.get() != null) {
                     CliConfig finalConfig = CliConfig.validateCreate(intialConfig.host(), intialConfig.port(),
-                                                authenticatedUser.get(), intialConfig.token());
+                                                authenticatedUser.get(), tokenReference.get());
                     launchChatGui(finalGui, finalScreen, finalConfig, frame, socket, output, input);
                 } else {
                     if (gui != null) {

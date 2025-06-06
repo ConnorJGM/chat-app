@@ -188,8 +188,17 @@ public record CliConfig(String host, int port, String user, String token) {
                             System.out.println("Connected users: " + String.join(", ", lastRoster));
                             intialRosterShown = true;
                         }
-                    } else {
-                        System.out.printf("%s: %s%n", message.getUser(), message.getBody());
+                        continue;
+                    }
+
+                    // If the message type is "hello", "text", or "bye", print the message body.
+                    switch (message.getType()) {
+                        case "hello", "text", "bye" -> {
+                            System.out.printf("%s: %s%n", message.getUser(), message.getBody());
+                        }
+                        default -> {
+                            continue;
+                        }
                     }
                 }
             } catch (IOException e) {

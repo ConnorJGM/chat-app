@@ -1,6 +1,9 @@
+// WebSocketChatEndpoint.java
+
 package com.connorgillmead.chat.server;
 
 import com.connorgillmead.chat.common.ChatMessage;
+import com.connorgillmead.chat.server.database.Database;
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnError;
 import jakarta.websocket.OnMessage;
@@ -12,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import org.mindrot.jbcrypt.BCrypt;
 
 /**
  * WebSocket endpoint for the chat server.
@@ -68,45 +72,51 @@ public class WebSocketChatEndpoint {
         // Check if the message is a "hello" message.
         // If the handler is not authenticated, check if the message is a "hello" message.
         if (handler != null && !handler.isAuthenticated()) {
-            if (!"hello".equals(msg.getType())) {
-                System.out.println("WebSocket: First message was not 'hello', closing.");
-                session.close();
-                return;
+            switch  (msg.getType().trim()) {
+                case "login":
+                    handleLogin(msg, handler, session);
+                    return;
+                case "register":
+                    handleRegister(msg, handler, session);
+                    return;
+                case "hello":
+                    // Required token validation
+                    // If the server requires a token, check if the provided token matches the required token.
+                    String requiredToken = hub.getToken();
+                    if (requiredToken != null && !requiredToken.isBlank() && !requiredToken.equals(msg.getToken())) {
+                        System.out.println("WebSocket: Invalid or missing token for user: " + msg.getUser());
+                        session.close();
+                        return;
+                    }
+                    // Check if the username is already in use.
+                    // If the username is already in use, close the session.
+                    if (!hub.reserveName(msg.getUser())) {
+                        System.out.println("WebSocket: Username already in use: " + msg.getUser());
+                        session.close();
+                        return;
+                    }
+                    // Set the username and authenticated status for the handler.
+                    handler.setUsername(msg.getUser());
+                    handler.setAuthenticated(true);
+                    hub.getHistory().forEach(handler::send);
+                    hub.addClient(handler);
+                    System.out.println(handler.getUsername() + " connected on WebSocket: " + session.getId());
+                    // Broadcast the "hello" message to all connected clients.
+                    hub.broadcast(ChatMessage.hello(msg.getUser(), null));
+                    return;
+                default:
+                    handler.send(ChatMessage.error("Invalid message type: " + msg.getType()));
+                    return;
             }
-
-            // Required token validation.
-            // If the server requires a token, check if the provided token matches the required token.
-            String requiredToken = hub.getToken();
-            if (requiredToken != null && !requiredToken.isBlank() && !requiredToken.equals(msg.getToken())) {
-                System.out.println("WebSocket: Invalid or missing token for user: " + msg.getUser());
-                session.close();
-                return;
-            }
-
-
-            // Check if the username is already in use.
-            // If the username is already in use, close the session.
-            if (!hub.reserveName(msg.getUser())) {
-                System.out.println("WebSocket: Username already in use: " + msg.getUser());
-                session.close();
-                return;
-            }
-
-            // Set the username and authenticated status for the handler.
-            handler.setUsername(msg.getUser());
-            handler.setAuthenticated(true);
-            hub.getHistory().forEach(handler::send);
-            hub.addClient(handler);
-            System.out.println(handler.getUsername() + " connected on WebSocket: " + session.getId());
-
-            // Broadcast the "hello" message to all connected clients.
-            hub.broadcast(ChatMessage.hello(msg.getUser(), null));
-            return;
         }
 
         // If the handler is authenticated, process the message.
         // If the message is a command, handle it accordingly.
         if (handler != null && handler.isAuthenticated()) {
+            if ("hello".equals(msg.getType())) {
+                hub.broadcast(ChatMessage.hello(handler.getUsername(), null));
+                return;
+            }
             if (CommandHelper.command(msg, hub, handler)) {
                 return;
             }
@@ -117,6 +127,109 @@ public class WebSocketChatEndpoint {
                 hub.broadcast(msg);
             }
         }
+    }
+
+    /**
+     * Handles user login requests.
+     * This method checks if the user exists and if the password is correct.
+     * If the login is successful, it sets the username and authenticated status for the handler.
+     * @param message The ChatMessage containing the login request.
+     * @param handler The WebHandler instance for the session.
+     * @param session The WebSocket session that sent the message.
+     * @throws IOException If an I/O error occurs while sending a response.
+    */
+    private void handleLogin(ChatMessage message, WebHandler handler, Session session) throws IOException {
+        String username = message.getUser();
+        String password = message.getPassword();
+        String clientToken = message.getToken();
+
+        String requiredToken = hub.getToken();
+        if (requiredToken != null && !requiredToken.isBlank()) {
+            if (clientToken == null || !clientToken.equals(requiredToken) || !requiredToken.equals(clientToken)) {
+                handler.send(createLoginResponse(false, "Invalid or missing token.", null, null));
+                return;
+            }
+        }
+
+        if (!Database.userExists(username)) {
+            handler.send(createLoginResponse(false, "User does not exist.", null, null));
+            return;
+        }
+
+        String storedHash = Database.getPasswordHash(username);
+        if (storedHash == null) {
+            handler.send(createLoginResponse(false, "Authentication Error.", null, null));
+            return;
+        }
+        if (!BCrypt.checkpw(password, storedHash)) {
+            handler.send(createLoginResponse(false, "Invalid password.", null, null));
+            return;
+        }
+
+        if (!hub.reserveName(username)) {
+            handler.send(createLoginResponse(false, "User is already logged in.", null, null));
+            return;
+        }
+
+        handler.setUsername(username);
+        handler.setAuthenticated(true);
+        hub.getHistory().forEach(handler::send);
+        hub.addClient(handler);
+        System.out.println(username + " connected from WebSocket: " + session.getId());
+        handler.send(createLoginResponse(true, "Login successful", username, requiredToken));
+    }
+
+    /**
+     * Handles user registration requests.
+     * This method checks if the username already exists and if not, adds the user to the database.
+     * If the registration is successful, it sends a response to the client.
+     * @param message The ChatMessage containing the registration request.
+     * @param handler The WebHandler instance for the session.
+     * @param session The WebSocket session that sent the message.
+     * @throws IOException If an I/O error occurs while sending a response.
+    */
+    private void handleRegister(ChatMessage message, WebHandler handler, Session session) throws IOException {
+        String username = message.getUser();
+        String password = message.getPassword();
+
+        if (Database.userExists(username)) {
+            handler.send(createRegisterResponse(false, "Username already exists."));
+            return;
+        }
+
+        if (Database.addUser(username, password)) {
+            handler.send(createRegisterResponse(true, "Registration successful for " + username));
+            return;
+        } else {
+            handler.send(createRegisterResponse(false, "Registration failed. Please try again."));
+        }
+    }
+
+    /**
+     * Creates a login response message.
+     * This method is used to create a response message for login requests.
+     * @param success Indicates whether the login was successful or not.
+     * @param message The message to be sent in the response.
+     * @param username The username of the user who logged in.
+     * @return A ChatMessage object representing the login response.
+    */
+    private ChatMessage createLoginResponse(boolean success, String message, String username, String token) {
+        ChatMessage response = ChatMessage.authorisedResponse("login_response", username, success, message);
+        if (success && token != null) {
+            response.setToken(token);
+        }
+        return response;
+    }
+
+    /**
+     * Creates a registration response message.
+     * This method is used to create a response message for registration requests.
+     * @param success Indicates whether the registration was successful or not.
+     * @param message The message to be sent in the response.
+     * @return A ChatMessage object representing the registration response.
+    */
+    private ChatMessage createRegisterResponse(boolean success, String message) {
+        return ChatMessage.authorisedResponse("register_response", null, success, message);
     }
 
     /**

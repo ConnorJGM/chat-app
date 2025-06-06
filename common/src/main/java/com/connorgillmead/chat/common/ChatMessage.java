@@ -64,6 +64,10 @@ public final class ChatMessage {
         return message;
     }
 
+    public void setToken(String token) {
+        this.token = token;
+    }
+
     /**
      * Creates a new ChatMessage object with the specified user and body.
      * The time is set to the current time in milliseconds since the epoch.
