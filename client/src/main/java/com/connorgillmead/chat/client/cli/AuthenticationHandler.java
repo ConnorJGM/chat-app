@@ -16,12 +16,16 @@ import java.util.Scanner;
  * The class uses a Scanner for user input and a PrintWriter for sending
  * messages to the server.
  */
-public class AuthenticationHandler {
+public final class AuthenticationHandler {
     private final Scanner scanner;
     private final PrintWriter printWriter;
     private final BufferedReader bufferedReader;
     private String authenticatedUsername;
     private String token;
+
+    private record UserCredentials(String username, String password) { }
+
+    private record AuthenticationAction(String type, String tentativeUsername, UserCredentials credentials) { }
 
     /**
      * Constructor for AuthenticationHandler.
@@ -29,12 +33,13 @@ public class AuthenticationHandler {
      * output,
      * and a BufferedReader for reading server responses.
      *
-     * @param scanner The Scanner object to read user input from the console.
-     * @param printWriter  The PrintWriter object to send messages to the server.
-     * @param bufferedReader   The BufferedReader object to read responses from the server.
+     * @param scanner        The Scanner object to read user input from the console.
+     * @param printWriter    The PrintWriter object to send messages to the server.
+     * @param bufferedReader The BufferedReader object to read responses from the
+     *                       server.
      */
     public AuthenticationHandler(Scanner scanner, PrintWriter printWriter,
-                                 BufferedReader bufferedReader, String token) {
+            BufferedReader bufferedReader, String token) {
         this.scanner = scanner;
         this.printWriter = printWriter;
         this.bufferedReader = bufferedReader;
@@ -43,7 +48,8 @@ public class AuthenticationHandler {
 
     /**
      * Returns the token used for authentication.
-     * This method is called after a successful authentication to retrieve the token.
+     * This method is called after a successful authentication to retrieve the
+     * token.
      *
      * @return The token used for authentication, or null if not set.
      */
@@ -67,48 +73,23 @@ public class AuthenticationHandler {
         boolean authenticated = false;
 
         while (attempts <= Authentication.MAX_AUTH_ATTEMPTS && !authenticated) {
-            System.out.println("Choose action: [1] Login, [2] Register, [3] Exit");
-            String choice = scanner.nextLine().trim();
-            String username;
-            String password;
-            String tentativeUsername;
-            String actionType;
+            AuthenticationAction action = promptUser();
 
-            switch (choice) {
-                case "1":
-                    System.out.print("Enter username: ");
-                    username = scanner.nextLine().trim();
-                    System.out.print("Enter password: ");
-                    password = scanner.nextLine().trim();
-                    actionType = "login";
-                    tentativeUsername = username;
-                    break;
+            if (action == null) {
+                return false;
+            }
 
-                case "2":
-                    System.out.print("Enter new username: ");
-                    username = scanner.nextLine().trim();
-                    System.out.print("Enter new password: ");
-                    password = scanner.nextLine().trim();
-                    actionType = "register";
-                    tentativeUsername = username;
-                    break;
-
-                case "3":
-                    System.out.println("Exiting authentication process.");
-                    return false;
-
-                default:
-                    System.out.println("Invalid choice. Please try again.");
-                    attempts++;
-                    continue;
+            if (action.type().equals(null)) {
+                continue;
             }
 
             ChatMessage response;
             try {
-                response = Authentication.sendAuthenticationRequest(actionType, username, password,
-                                                                    this.token, printWriter, bufferedReader);
-            } catch (IOException e) {
-                System.err.println("Error during authentication: " + e.getMessage());
+                response = Authentication.sendAuthenticationRequest(action.type(),
+                        action.credentials().username(), action.credentials().password(),
+                        this.token, printWriter, bufferedReader);
+            } catch (IOException error) {
+                System.err.println("Error during authentication: " + error.getMessage());
                 return false;
             }
 
@@ -124,13 +105,13 @@ public class AuthenticationHandler {
                 if ("login_response".equals(response.getType())
                         || "register_response".equals(response.getType())) {
                     authenticated = true;
-                    authenticatedUsername = tentativeUsername;
+                    authenticatedUsername = action.tentativeUsername();
                 } else {
                     System.out.println("Unexpected response type: " + response.getType());
                 }
             } else {
                 System.out.println("Authentication failed: "
-                    + (Authentication.MAX_AUTH_ATTEMPTS - attempts) + " attempts remaining.");
+                        + (Authentication.MAX_AUTH_ATTEMPTS - attempts) + " attempts remaining.");
                 attempts++;
             }
         }
@@ -139,6 +120,47 @@ public class AuthenticationHandler {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Prompts the user for authentication action (login or register).
+     * This method displays a menu for the user to choose an action and collects
+     * their input.
+     *
+     * @return An AuthenticationAction object containing the user's choice and
+     *         credentials, or null if the user chooses to exit.
+     */
+    private AuthenticationAction promptUser() {
+        System.out.println("Choose action: [1] Login, [2] Register, [3] Exit");
+        String choice = scanner.nextLine().trim();
+        String username;
+        String password;
+        switch (choice) {
+            case "1":
+                System.out.print("Enter username: ");
+                username = scanner.nextLine().trim();
+                System.out.print("Enter password: ");
+                password = scanner.nextLine().trim();
+                return new AuthenticationAction("login", username,
+                        new UserCredentials(username, password));
+
+            case "2":
+                System.out.print("Enter new username: ");
+                username = scanner.nextLine().trim();
+                System.out.print("Enter new password: ");
+                password = scanner.nextLine().trim();
+                return new AuthenticationAction("register", username,
+                        new UserCredentials(username, password));
+
+            case "3":
+                System.out.println("Exiting authentication process.");
+                return null;
+
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                return new AuthenticationAction(null, null, null);
+        }
+
     }
 
     /**
@@ -152,6 +174,11 @@ public class AuthenticationHandler {
         return authenticatedUsername;
     }
 
+    /**
+     * Prompts the user to enter their token.
+     * This method is called when the token is invalid or not provided.
+     * It ensures that the user enters a non-empty token.
+     */
     private void promptForToken() {
         System.out.println("Please enter your token:");
         String enteredToken = scanner.nextLine().trim();

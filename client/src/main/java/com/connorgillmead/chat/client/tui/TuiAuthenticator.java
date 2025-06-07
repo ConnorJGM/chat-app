@@ -55,109 +55,42 @@ final class TuiAuthenticator {
     }
 
     /**
-     * Authenticates a user through a terminal user interface.
-     * This method presents the user with options to log in, register, or exit the
-     * application.
-     * It handles user input, validates credentials, and communicates with the
-     * server.
+     * Authenticates the user by allowing them to log in or register.
+     * This method presents a series of windows for the user to choose an action
+     * (login or register),
+     * input their credentials, and handle authentication attempts.
      *
-     * @param gui               The MultiWindowTextGUI instance for displaying
-     *                          windows and dialogs.
-     * @param screen            The Screen instance for rendering the TUI.
-     * @param printWriter            The PrintWriter for sending messages to the server.
-     * @param bufferedReader             The BufferedReader for reading responses from the
+     * @param gui               The MultiWindowTextGUI instance for displaying the
+     *                          windows.
+     * @param screen            The Screen instance for rendering the GUI.
+     * @param printWriter       The PrintWriter for sending messages to the server.
+     * @param bufferedReader    The BufferedReader for reading responses from the
      *                          server.
-     * @param authenticatedUser An AtomicReference to store the authenticated
+     * @param authenticatedUser An AtomicReference to hold the authenticated user's
      *                          username.
-     * @param maxAttempts       The maximum number of authentication attempts
-     *                          allowed.
+     * @param tokenReference    An AtomicReference to hold the authentication token.
+     * @param maxAttempts       The maximum number of authentication attempts allowed.
      * @return true if authentication is successful, false otherwise.
-     * @throws IOException If an I/O error occurs during communication with the
-     *                     server.
+     * @throws IOException If an I/O error occurs during authentication.
      */
     public static boolean authenticate(MultiWindowTextGUI gui, Screen screen, PrintWriter printWriter,
             BufferedReader bufferedReader, AtomicReference<String> authenticatedUser,
             AtomicReference<String> tokenReference, int maxAttempts) throws IOException {
         int attempts = 0;
         boolean authenticated = false;
-        final int column = 25;
 
         String currentToken = tokenReference.get();
 
-        // The loop continues until the user is authenticated or the maximum number of
-        // attempts is reached.
         while (attempts <= maxAttempts && !authenticated) {
-            AtomicReference<String> user = new AtomicReference<>();
-            BasicWindow window = new BasicWindow("Authentication");
-            Panel panel = new Panel(new GridLayout(1));
-            panel.addComponent(new Button("Login", () -> {
-                user.set("login");
-                window.close();
-            }));
-            panel.addComponent(new Button("Register", () -> {
-                user.set("register");
-                window.close();
-            }));
-            panel.addComponent(new Button("Exit Application", () -> {
-                user.set("exit_application");
-                window.close();
-            }));
-            window.setComponent(panel);
+            String action = authenticationWindow(gui);
 
-            window.addWindowListener(new WindowListenerAdapter() {
-                @Override
-                public void onUnhandledInput(Window window, KeyStroke keyStroke, AtomicBoolean handled) {
-                    if (keyStroke.getKeyType() == KeyType.Escape) {
-                        handled.set(true);
-                        user.set("exit_step");
-                        window.close();
-                    }
-                }
-            });
-            gui.addWindowAndWait(window);
-            String action = user.get();
             if (action == null || "exit_application".equals(action) || "exit_step".equals(action)) {
                 return false;
             }
 
-            // Prepare for user input for login or registration.
-            String tentativeUsername;
-            BasicWindow credentialWindow = new BasicWindow("login".equals(action) ? "Login" : "Register");
-            Panel credentialPanel = new Panel(new GridLayout(2));
-            TextBox usernameBox = new TextBox().setPreferredSize(new TerminalSize(column, 1));
-            TextBox passwordBox = new TextBox().setMask('*').setPreferredSize(new TerminalSize(column, 1));
-            credentialPanel.addComponent(new Label("Username: "));
-            credentialPanel.addComponent(usernameBox);
-            credentialPanel.addComponent(new Label("Password: "));
-            credentialPanel.addComponent(passwordBox);
+            Credentials credential = showCredentialWindow(gui, action);
 
-            AtomicBoolean submitted = new AtomicBoolean(false);
-            Button submitButton = new Button("Submit", () -> {
-                if (usernameBox.getText().trim().isEmpty() || passwordBox.getText().trim().isEmpty()) {
-                    new MessageDialogBuilder().setTitle("Error")
-                            .setText("Username and password cannot be empty.")
-                            .addButton(MessageDialogButton.OK).build().showDialog(gui);
-                } else {
-                    submitted.set(true);
-                    credentialWindow.close();
-                }
-            });
-            credentialPanel.addComponent(new EmptySpace(new TerminalSize(0, 0)));
-            credentialPanel.addComponent(submitButton);
-            credentialWindow.setComponent(credentialPanel);
-            credentialWindow.addWindowListener(new WindowListenerAdapter() {
-                @Override
-                public void onUnhandledInput(Window window, KeyStroke keyStroke, AtomicBoolean handled) {
-                    if (keyStroke.getKeyType() == KeyType.Escape) {
-                        handled.set(true);
-                        submitted.set(false);
-                        window.close();
-                    }
-                }
-            });
-            gui.addWindowAndWait(credentialWindow);
-
-            if (!submitted.get()) {
+            if (!credential.submitted()) {
                 attempts++;
                 if (attempts >= maxAttempts && !authenticated) {
                     new MessageDialogBuilder().setTitle("Authentication Failed")
@@ -168,14 +101,11 @@ final class TuiAuthenticator {
                 continue;
             }
 
-            // This section reads the input from the text boxes and prepares the
-            // authentication request.
-            String username = usernameBox.getText().trim();
-            String password = passwordBox.getText().trim();
-            tentativeUsername = username;
+            String username = credential.username();
+            String password = credential.password();
+            String tentativeUsername = username;
 
             ChatMessage responseMessage;
-
             try {
                 responseMessage = Authentication.sendAuthenticationRequest(action, username, password,
                                                                            currentToken, printWriter, bufferedReader);
@@ -188,18 +118,15 @@ final class TuiAuthenticator {
 
             if (responseMessage.isSuccess()) {
                 authenticatedUser.set(tentativeUsername);
-                tokenReference.set(currentToken);
                 showSuccess(gui, responseMessage.getMessage());
                 return true;
             }
 
             if (Authentication.tokenError(responseMessage.getMessage())) {
-                new MessageDialogBuilder()
-                        .setTitle("Token Error")
+                new MessageDialogBuilder().setTitle("Token Error")
                         .setText(responseMessage.getMessage())
                         .addButton(MessageDialogButton.OK)
-                        .build()
-                        .showDialog(gui);
+                        .build().showDialog(gui);
                 currentToken = promptToken(gui);
                 if (currentToken == null) {
                     return false;
@@ -208,12 +135,117 @@ final class TuiAuthenticator {
                 continue;
             }
 
-            // General authentication failure
             attempts++;
             int remainingAttempts = maxAttempts - attempts;
             authorisationFail(gui, responseMessage.getMessage(), remainingAttempts);
         }
         return false;
+    }
+
+    /**
+     * Displays a window for the user to choose an authentication action (login,
+     * register, or exit).
+     * This method creates a window with buttons for each action and waits for the
+     * user's choice.
+     *
+     * @param gui The MultiWindowTextGUI instance for displaying the window.
+     * @return A string representing the user's action choice, or null if the user
+     *         chooses to exit.
+     */
+    private static String authenticationWindow(MultiWindowTextGUI gui) {
+        AtomicReference<String> userAction = new AtomicReference<>();
+        BasicWindow window = new BasicWindow("Authentication");
+        Panel panel = new Panel(new GridLayout(1));
+        panel.addComponent(new Button("Login", () -> {
+            userAction.set("login");
+            window.close();
+        }));
+        panel.addComponent(new Button("Register", () -> {
+            userAction.set("register");
+            window.close();
+        }));
+        panel.addComponent(new Button("Exit Application", () -> {
+            userAction.set("exit_application");
+            window.close();
+        }));
+        window.setComponent(panel);
+        window.addWindowListener(new WindowListenerAdapter() {
+            @Override
+            public void onUnhandledInput(Window w, KeyStroke keyStroke, AtomicBoolean handled) {
+                if (keyStroke.getKeyType() == KeyType.Escape) {
+                    handled.set(true);
+                    userAction.set("exit_step");
+                    w.close();
+                }
+            }
+        });
+        gui.addWindowAndWait(window);
+        return userAction.get();
+    }
+
+    /**
+     * A record to hold the result of credential input.
+     * This record contains the username, password, and a flag indicating whether
+     * the input was submitted.
+     *
+     * @param username The username entered by the user.
+     * @param password The password entered by the user.
+     * @param submitted A boolean indicating whether the input was submitted
+     *                (true) or cancelled (false).
+     */
+    private record Credentials(String username, String password, boolean submitted) { }
+
+    /**
+     * Displays a window for user credential input (username and password).
+     * This method creates a window with text boxes for username and password,
+     * and a submit button.
+     * It validates the input to ensure that both fields are not empty.
+     *
+     * @param gui    The MultiWindowTextGUI instance for displaying the window.
+     * @param action The action type, either "login" or "register".
+     * @return A CredentialInputResult containing the entered username and password,
+     *         or null if the dialog is cancelled.
+     */
+    private static Credentials showCredentialWindow(MultiWindowTextGUI gui, String action) {
+        final int column = 25;
+        BasicWindow credentialWindow = new BasicWindow("login".equals(action) ? "Login" : "Register");
+        Panel credentialPanel = new Panel(new GridLayout(2));
+        TextBox usernameBox = new TextBox().setPreferredSize(new TerminalSize(column, 1));
+        TextBox passwordBox = new TextBox().setMask('*').setPreferredSize(new TerminalSize(column, 1));
+        credentialPanel.addComponent(new Label("Username: "));
+        credentialPanel.addComponent(usernameBox);
+        credentialPanel.addComponent(new Label("Password: "));
+        credentialPanel.addComponent(passwordBox);
+
+        AtomicBoolean submittedFlag = new AtomicBoolean(false);
+        Button submitButton = new Button("Submit", () -> {
+            if (usernameBox.getText().trim().isEmpty() || passwordBox.getText().trim().isEmpty()) {
+                new MessageDialogBuilder().setTitle("Error")
+                        .setText("Username and password cannot be empty.")
+                        .addButton(MessageDialogButton.OK).build().showDialog(gui);
+            } else {
+                submittedFlag.set(true);
+                credentialWindow.close();
+            }
+        });
+        credentialPanel.addComponent(new EmptySpace(new TerminalSize(0, 0)));
+        credentialPanel.addComponent(submitButton);
+        credentialWindow.setComponent(credentialPanel);
+        credentialWindow.addWindowListener(new WindowListenerAdapter() {
+            @Override
+            public void onUnhandledInput(Window w, KeyStroke keyStroke, AtomicBoolean handled) {
+                if (keyStroke.getKeyType() == KeyType.Escape) {
+                    handled.set(true);
+                    submittedFlag.set(false);
+                    w.close();
+                }
+            }
+        });
+        gui.addWindowAndWait(credentialWindow);
+        if (submittedFlag.get()) {
+            return new Credentials(usernameBox.getText().trim(), passwordBox.getText().trim(), true);
+        }
+        return new Credentials(null, null, false);
     }
 
     /**

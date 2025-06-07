@@ -25,14 +25,31 @@ import java.util.concurrent.LinkedBlockingQueue;
  */
 public final class ChatClientApp {
 
-    private static List<String> lastRoster = new ArrayList<>();
-    private static boolean rosterShown;
+    private List<String> lastRoster = new ArrayList<>();
+    private boolean rosterShown;
+
+    private final ClientConfig clientConfig;
+    private final Scanner scanner;
+
+    private Socket socket;
+    private PrintWriter printWriter;
+    private BufferedReader bufferedReader;
+    private BlockingQueue<ChatMessage> messageQueue;
+    private String authenticatedUsername;
+    private String token;
 
     /**
-     * Private constructor to prevent instantiation.
-     * This class is not meant to be instantiated; it only contains a main method.
+     * Constructor for ChatClientApp.
+     * Initialises the client with the provided configuration and scanner.
+     * @param clientConfig The configuration for the chat client, including host,
+     *                     port, user, and token.
+     * @param scanner The Scanner object for reading user input from the console.
+     *                This is used to prompt the user for input and read messages
+     *                   from the console.
      */
-    private ChatClientApp() {
+    public ChatClientApp(ClientConfig clientConfig, Scanner scanner) {
+        this.clientConfig = clientConfig;
+        this.scanner = scanner;
     }
 
     /**
@@ -57,7 +74,8 @@ public final class ChatClientApp {
         // characters.
         try (Scanner scanner = new Scanner(System.in, "UTF-8")) {
             ClientConfig config = ClientConfig.fromArgs(arguments, scanner);
-            runPlainClient(config, scanner);
+            ChatClientApp clientApp = new ChatClientApp(config, scanner);
+            clientApp.run();
         }
     }
 
@@ -66,93 +84,153 @@ public final class ChatClientApp {
     // and another for receiving messages.
     // The method takes a ClientConfig object and a Scanner object as parameters.
     // The ClientConfig object contains the host, port, user, and token information.
-    private static void runPlainClient(ClientConfig config, Scanner scanner) {
+    private void run() {
         // Create a new ChatClient instance and connect to the server.
         // The try-with-resources statement ensures that the socket is closed properly
         // when done.
-        try (ChatClient client = new ChatClient(config.host(), config.port())) {
+        try (ChatClient chatClient = new ChatClient(this.clientConfig.host(), this.clientConfig.port())) {
 
-            Socket socket = client.socket();
+            this.socket = chatClient.socket();
 
             // Thread A – send messages.
             // This thread sends messages to the server.
             // It uses a PrintWriter to send text data to the server.
-            PrintWriter printWriter = new PrintWriter(
+            this.printWriter = new PrintWriter(
                     new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8),
                     true);
 
-            BufferedReader bufferedReader = new BufferedReader(
+            this.bufferedReader = new BufferedReader(
                     new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
 
-            System.out.println("Connected to chat server at " + config.host() + ":" + config.port());
+            System.out.println("Connected to chat server at " + this.clientConfig.host()
+                                + ":" + this.clientConfig.port());
 
             AuthenticationHandler authenticationHandler = new AuthenticationHandler(scanner, printWriter,
-                    bufferedReader, config.token());
+                    bufferedReader, this.clientConfig.token());
             boolean authenticated = authenticationHandler.authenticate();
             if (!authenticated) {
                 System.err.println("Authentication failed. Exiting.");
                 return;
             }
 
-            String authenticatedUsername = authenticationHandler.getAuthenticatedUsername();
-            String token = authenticationHandler.getToken();
-            if (authenticatedUsername == null || authenticatedUsername.isEmpty()) {
+            this.authenticatedUsername = authenticationHandler.getAuthenticatedUsername();
+            this.token = authenticationHandler.getToken();
+            if (this.authenticatedUsername == null || this.authenticatedUsername.isEmpty()) {
                 System.err.println("No username provided. Exiting.");
                 return;
             }
 
-            BlockingQueue<ChatMessage> messageQueue = new LinkedBlockingQueue<>();
-            Thread readerThread = new Thread(() -> ChatClientNet.readLoop(socket, messageQueue));
+            this.messageQueue = new LinkedBlockingQueue<>();
+            Thread readerThread = new Thread(() -> ChatClientNet.readLoop(this.socket, this.messageQueue));
             readerThread.setDaemon(true);
             readerThread.start();
 
-            Thread messageProcessorThread = new Thread(() -> {
-                processMessages(socket, messageQueue, authenticatedUsername);
-            });
+            Thread messageProcessorThread = new Thread(this::processMessages);
             messageProcessorThread.setDaemon(true);
             messageProcessorThread.start();
 
             // Notify the server that the user has joined the chat.
-            printWriter.println(ChatMessage.hello(authenticatedUsername, token).toJson());
+            this.printWriter.println(ChatMessage.hello(authenticatedUsername, token).toJson());
 
-            // This thread reads user input from the scanner and sends it to the server.
-            // It runs in a loop until the user enters "exit" or an I/O error occurs.
-            while (!socket.isClosed() && scanner.hasNextLine()) {
-                String text = scanner.nextLine();
+            handleInput();
+            // Close the socket and release any associated resources.
+        } catch (GeneralSecurityException | IOException error) {
+            error.printStackTrace();
+        }
+    }
 
-                // If the user enters "exit", notify the server and break the loop.
-                // This allows the user to leave the chat gracefully.
+    /**
+     * Handles user input in a loop, allowing the user to send messages, list users,
+     * or quit the chat.
+     * This method runs in a separate thread and processes user input from the
+     * console.
+     *
+     * @param socket                The socket connected to the chat server.
+     * @param scanner               The Scanner object for reading user input.
+     * @param printWriter           The PrintWriter for sending messages to the server.
+     * @param authenticatedUsername The username of the authenticated user.
+     * @param token                 The authentication token for the user.
+     */
+    private void handleInput() {
+        final int sleep = 100;
+        try {
+            while (!this.socket.isClosed() && this.scanner.hasNextLine()) {
+                String text = this.scanner.nextLine();
+
                 if ("quit".equalsIgnoreCase(text.trim())) {
-                    socket.close();
+                    if (!this.socket.isClosed()) {
+                        sendByeMessageAndWait(this.authenticatedUsername, sleep);
+                        this.socket.close();
+                    }
                     break;
                 }
 
-                // If the user enters "list users", display the list of connected users.
-                // This command is used to show the current users in the chat.
                 if ("list users".equalsIgnoreCase(text.trim())) {
-                    System.out.println("Connected users: " + String.join(", ", lastRoster));
+                    System.out.println("Connected users: " + String.join(", ", this.lastRoster));
                     continue;
                 }
 
-                // If the user enters nothing, continue to the next iteration.
-                // This prevents sending empty messages to the server.
                 if (text.isEmpty()) {
                     continue;
                 }
-
-                // Messages are sent to the server in JSON format.
-                // The ChatMessage class is used to create a message object with the username
-                // and message body.
-                ChatMessage message = ChatMessage.of(authenticatedUsername, text);
-                printWriter.println(message.toJson());
+                ChatMessage message = ChatMessage.of(this.authenticatedUsername, text);
+                this.printWriter.println(message.toJson());
             }
-            // Close the socket and release any associated resources.
-            // The try-with-resources statement ensures that the socket is closed properly
-            // when done.
-            // Catch any exceptions that occur during the process.
-            // This includes GeneralSecurityException and IOException.
-        } catch (GeneralSecurityException | IOException error) {
-            error.printStackTrace();
+        } catch (IOException error) {
+            System.err.println("Error in user input loop: " + error.getMessage());
+        } finally {
+            closeSocketSafely(this.authenticatedUsername, sleep);
+        }
+    }
+
+    /**
+     * Sends a "bye" message to the server and waits for a specified time.
+     * This method is used to notify the server that the user is leaving the chat
+     * before closing the socket.
+     *
+     * @param username    The username of the authenticated user.
+     * @param sleepTime   The time to wait after sending the "bye" message before
+     *                    closing the socket.
+     */
+    private void sendByeMessageAndWait(String username, int sleepTime) {
+        ChatMessage byeMessage = ChatMessage.bye(username);
+        this.printWriter.println(byeMessage.toJson());
+        sleepSafely(sleepTime);
+    }
+
+    /**
+     * Sleeps for a specified number of milliseconds, handling any InterruptedException
+     * that may occur.
+     * This method is used to pause the execution of the thread safely.
+     *
+     * @param milliseconds The number of milliseconds to sleep.
+     */
+    private static void sleepSafely(int milliseconds) {
+        try {
+            Thread.sleep(milliseconds);
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * Closes the socket safely and sends a "bye" message to the server.
+     * This method ensures that the socket is closed properly and handles any
+     * IOException that may occur during the process.
+     *
+     * @param socket       The socket to be closed.
+     * @param printWriter  The PrintWriter used to send messages to the server.
+     * @param username     The username of the authenticated user.
+     * @param sleepTime    The time to wait after sending the "bye" message before closing the socket.
+     */
+    private void closeSocketSafely(String username, int sleepTime) {
+        if (!this.socket.isClosed()) {
+            try {
+                sendByeMessageAndWait(username, sleepTime);
+                this.socket.close();
+            } catch (IOException error) {
+                System.err.println("Error closing socket: " + error.getMessage());
+            }
         }
     }
 
@@ -161,26 +239,25 @@ public final class ChatClientApp {
      * This method runs in a separate thread and handles different types of messages
      * such as text, roster updates, and server shutdown notifications.
      *
-     * @param socket              The socket connected to the chat server.
-     * @param messageQueue        The queue containing messages to be processed.
+     * @param socket                The socket connected to the chat server.
+     * @param messageQueue          The queue containing messages to be processed.
      * @param authenticatedUsername The username of the authenticated user.
      */
-    private static void processMessages(Socket socket, BlockingQueue<ChatMessage> messageQueue,
-            String authenticatedUsername) {
+    private void processMessages() {
         try {
-            while (!socket.isClosed()) {
-                ChatMessage message = messageQueue.take();
+            while (this.socket != null && !this.socket.isClosed()) {
+                ChatMessage message = this.messageQueue.take();
 
                 if (ChatMessage.SERVER_SHUTDOWN.equals(message.getType())) {
                     System.out.println("The server is shutting down. Exiting...");
-                    socket.close();
+                    this.socket.close();
                     System.exit(0);
                     return;
                 }
 
                 if (message.isKick()) {
                     System.out.println(message.getBody());
-                    socket.close();
+                    this.socket.close();
                     System.exit(0);
                     return;
                 }
@@ -191,10 +268,10 @@ public final class ChatClientApp {
                 }
 
                 if ("roster".equals(message.getType())) {
-                    lastRoster = message.getUserList();
-                    if (!rosterShown && lastRoster.contains(authenticatedUsername)) {
-                        System.out.println("Connected users: " + String.join(", ", lastRoster));
-                        rosterShown = true;
+                    this.lastRoster = message.getUserList();
+                    if (!this.rosterShown && this.lastRoster.contains(this.authenticatedUsername)) {
+                        System.out.println("Connected users: " + String.join(", ", this.lastRoster));
+                        this.rosterShown = true;
                     }
                     continue;
                 }
@@ -213,13 +290,13 @@ public final class ChatClientApp {
             Thread.currentThread().interrupt();
             System.err.println("Message processing was interrupted.");
         } catch (IOException error) {
-            if (!socket.isClosed()) {
+            if (this.socket != null && !this.socket.isClosed()) {
                 System.err.println("Error processing message or socket closed: " + error.getMessage());
             }
         } finally {
-            if (!socket.isClosed()) {
+            if (this.socket != null && !this.socket.isClosed()) {
                 try {
-                    socket.close();
+                    this.socket.close();
                 } catch (IOException error) {
                 }
             }
