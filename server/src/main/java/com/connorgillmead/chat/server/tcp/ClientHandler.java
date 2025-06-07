@@ -26,7 +26,7 @@ public class ClientHandler implements Runnable {
     private final Socket socket;
     private final ChatServerHub hub;
     private String username;
-    private PrintWriter out;
+    private PrintWriter printWriter;
     private boolean authenticated;
 
     /**
@@ -98,17 +98,17 @@ public class ClientHandler implements Runnable {
      */
     @Override
     public void run() {
-        try (BufferedReader in = new BufferedReader(
+        try (BufferedReader bufferedReader = new BufferedReader(
                 new InputStreamReader(socket.getInputStream(), "UTF-8"))) {
 
             // Get the output stream for sending messages to the client.
             // The PrintWriter is used to send text data to the client.
             // The 'true' argument enables auto-flushing (output stream flushed).
-            out = new PrintWriter(socket.getOutputStream(), true);
+            printWriter = new PrintWriter(socket.getOutputStream(), true);
 
             while (!authenticated) {
                 // Read the next line from the client.
-                String line = in.readLine();
+                String line = bufferedReader.readLine();
                 if (line == null) {
                     System.out.println("Client disconnected before authentication: " + socket.getRemoteSocketAddress());
                     return;
@@ -163,26 +163,26 @@ public class ClientHandler implements Runnable {
             // If the username is not set, read the first message from the client.
             // This is typically the "hello" message sent by the client to identify itself.
             if (!this.authenticated || this.username == null) {
-                String firstLine = in.readLine();
+                String firstLine = bufferedReader.readLine();
                 if (firstLine == null) {
                     socket.close();
                     return;
                 }
-                ChatMessage firstMsg = ChatMessage.fromJson(firstLine);
-                if (!"hello".equals(firstMsg.getType())) {
-                    out.println(ChatMessage.error("Must send 'hello' first"));
+                ChatMessage firstMessage = ChatMessage.fromJson(firstLine);
+                if (!"hello".equals(firstMessage.getType())) {
+                    printWriter.println(ChatMessage.error("Must send 'hello' first"));
                     socket.close();
                     return;
                 }
                 String serverToken = hub.getToken();
                 if (serverToken != null && !serverToken.isBlank()
-                        && !serverToken.equals(firstMsg.getToken())) {
-                    out.println(ChatMessage.error("Invalid token"));
+                        && !serverToken.equals(firstMessage.getToken())) {
+                    printWriter.println(ChatMessage.error("Invalid token"));
                     socket.close();
                     return;
                 }
-                this.username = firstMsg.getUser();
-                hub.broadcast(firstMsg);
+                this.username = firstMessage.getUser();
+                hub.broadcast(firstMessage);
             }
 
             System.out.println(this.username + " connected from " + socket);
@@ -190,12 +190,12 @@ public class ClientHandler implements Runnable {
             hub.getHistory().forEach(this::send);
             send(ChatMessage.userList(hub.getUsernames()));
 
-            handleClientMessages(in);
+            handleClientMessages(bufferedReader);
 
-        } catch (SocketException e) {
+        } catch (SocketException error) {
             System.out.println(getUsername() + " disconnected from: " + socket.getRemoteSocketAddress());
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException error) {
+            error.printStackTrace();
         } finally {
             if (username != null && authenticated) {
                 // Clean up resources when the client disconnects
@@ -206,8 +206,8 @@ public class ClientHandler implements Runnable {
             }
             try {
                 socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (IOException error) {
+                error.printStackTrace();
             }
         }
     }
@@ -216,11 +216,11 @@ public class ClientHandler implements Runnable {
      * Sends a message to the client.
      * This method is called to send a message to the client.
      *
-     * @param msg The message to send to the client.
+     * @param message The message to send to the client.
      */
-    public void send(ChatMessage msg) {
-        if (out != null) {
-            out.println(msg.toJson());
+    public void send(ChatMessage message) {
+        if (printWriter != null) {
+            printWriter.println(message.toJson());
         }
     }
 
@@ -232,8 +232,8 @@ public class ClientHandler implements Runnable {
     public void disconnect() {
         try {
             socket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException error) {
+            error.printStackTrace();
         }
     }
 
@@ -311,14 +311,14 @@ public class ClientHandler implements Runnable {
      * It continues to read messages until the client disconnects or an I/O error
      * occurs.
      *
-     * @param input The BufferedReader for reading messages from the client.
+     * @param bufferedReader The BufferedReader for reading messages from the client.
      * @throws IOException If an I/O error occurs while reading from the client.
      */
-    private void handleClientMessages(BufferedReader input) throws IOException {
+    private void handleClientMessages(BufferedReader bufferedReader) throws IOException {
         // Read messages from the client and broadcast them to all clients.
         // This loop continues until the client disconnects or an I/O error occurs.
         String line;
-        while ((line = input.readLine()) != null) {
+        while ((line = bufferedReader.readLine()) != null) {
             ChatMessage message = ChatMessage.fromJson(line);
 
             switch (message.getType()) {

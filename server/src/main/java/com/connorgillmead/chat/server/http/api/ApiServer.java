@@ -6,7 +6,7 @@ import com.connorgillmead.chat.common.ChatMessage;
 import com.connorgillmead.chat.server.http.ChatHttpServer;
 import com.connorgillmead.chat.server.http.HttpConfig;
 import com.connorgillmead.chat.server.tcp.ChatServerHub;
-import com.connorgillmead.chat.server.tcp.SerConfig;
+import com.connorgillmead.chat.server.tcp.ServerConfig;
 import com.connorgillmead.chat.server.websocket.WebHandler;
 import com.connorgillmead.chat.server.websocket.WebSocketChatEndpoint;
 import java.io.IOException;
@@ -47,7 +47,7 @@ public final class ApiServer {
      */
     public static void register(HttpServer server,
                          ChatServerHub hub,
-                         SerConfig cfg,
+                         ServerConfig cfg,
                          long startMillis,
                          String[] originalArgs) {
         server.getServerConfiguration()
@@ -180,8 +180,8 @@ public final class ApiServer {
                             hub.kickUser(user);
                             try {
                                 s.close();
-                            } catch (IOException e) {
-                                e.printStackTrace();
+                            } catch (IOException error) {
+                                error.printStackTrace();
                             }
                         });
 
@@ -203,20 +203,20 @@ public final class ApiServer {
      *
      * @return An HttpHandler that handles requests to the `/restart` endpoint.
      */
-    private static HttpHandler createRestartHandler(SerConfig cfg, String[] originalArgs) {
+    private static HttpHandler createRestartHandler(ServerConfig cfg, String[] originalArgs) {
         return new HttpHandler() {
             @Override
             public void service(Request request, Response response) throws IOException {
                 if ("POST".equalsIgnoreCase(String.valueOf(request.getMethod()))) {
                     final int timeout = 100;
-                    SerConfig.removeShutdownHook();
+                    ServerConfig.removeShutdownHook();
 
                     new Thread(() -> {
                         try {
                             Thread.sleep(timeout);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                            if (e instanceof InterruptedException) {
+                        } catch (InterruptedException error) {
+                            error.printStackTrace();
+                            if (error instanceof InterruptedException) {
                                 Thread.currentThread().interrupt();
                             }
                         }

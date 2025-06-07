@@ -5,7 +5,7 @@ package com.connorgillmead.chat.server.http;
 import com.connorgillmead.chat.server.http.api.ApiServer;
 import com.connorgillmead.chat.server.http.ui.WebPageServer;
 import com.connorgillmead.chat.server.tcp.ChatServerHub;
-import com.connorgillmead.chat.server.tcp.SerConfig;
+import com.connorgillmead.chat.server.tcp.ServerConfig;
 import com.connorgillmead.chat.server.websocket.WebSocketChatEndpoint;
 import java.io.IOException;
 import org.glassfish.grizzly.http.server.HttpServer;
@@ -60,8 +60,8 @@ public final class ChatHttpServer {
      * @return The started HttpServer instance.
      * @throws IOException If an I/O error occurs while starting the server.
      */
-    public static HttpServer start(ChatServerHub hub, SerConfig cfg) throws IOException {
-        return start(hub, cfg, new String[0]);
+    public static HttpServer start(ChatServerHub hub, ServerConfig config) throws IOException {
+        return start(hub, config, new String[0]);
     }
 
     /**
@@ -74,7 +74,8 @@ public final class ChatHttpServer {
      * @return The started HttpServer instance.
      * @throws IOException If an I/O error occurs while starting the server.
      */
-    public static HttpServer start(ChatServerHub hub, SerConfig cfg, String[] originalArgs) throws IOException {
+    public static HttpServer start(ChatServerHub hub, ServerConfig config,
+                                   String[] originalArguments) throws IOException {
         HttpServer server = HttpServer.createSimpleServer(null, PORT_HTTP);
         long startMillis = System.currentTimeMillis();
 
@@ -83,7 +84,7 @@ public final class ChatHttpServer {
         // users endpoint.
         // The startMillis is used to calculate the server's uptime.
         WebPageServer.register(server, hub, startMillis);
-        ApiServer.register(server, hub, cfg, startMillis, originalArgs);
+        ApiServer.register(server, hub, config, startMillis, originalArguments);
         // Attach the WebSocket endpoint to the hub.
         // This allows the WebSocket endpoint to access the ChatServerHub instance for
         // broadcasting messages.

@@ -27,31 +27,31 @@ public final class ChatServerApp {
     /**
      * Main method to start the server.
      *
-     * @param args Command line arguments. The first argument is the port number
+     * @param arguments Command line arguments. The first argument is the port number
      *             (default is 5555).
      * @throws IOException              If an I/O error occurs when creating the
      *                                  server socket or accepting a connection.
      * @throws GeneralSecurityException If a security error occurs when creating the
      *                                  server socket.
      */
-    public static void main(String[] args) throws IOException, GeneralSecurityException {
+    public static void main(String[] arguments) throws IOException, GeneralSecurityException {
 
-        // Create a Scanner object to read user input from the console.
-        Scanner console = new Scanner(System.in, "UTF-8");
+        // Create a Scanner object to read user input from the scanner.
+        Scanner scanner = new Scanner(System.in, "UTF-8");
 
         // Parse command line arguments to get the server configuration.
-        // The SerConfig.parseArgs method is used to parse the command line arguments
-        // and create a SerConfig object that contains the host, port, and token.
-        List<String> mainArgs = new ArrayList<>(Arrays.asList(args));
+        // The ServerConfig.parseArgs method is used to parse the command line arguments
+        // and create a ServerConfig object that contains the host, port, and token.
+        List<String> mainArgs = new ArrayList<>(Arrays.asList(arguments));
         boolean autoStart = mainArgs.remove("--auto-start");
-        SerConfig cfg = SerConfig.parseArgs(args);
+        ServerConfig config = ServerConfig.parseArgs(arguments);
 
         // If the host, port, or token is not provided, prompt the user for input.
-        // The SerConfig.argumentPrompt method is used to prompt the user for missing
-        if (!cfg.hostGiven() || !cfg.portGiven() || (cfg.token() == null || cfg.token().isEmpty())) {
+        // The ServerConfig.argumentPrompt method is used to prompt the user for missing
+        if (!config.hostGiven() || !config.portGiven() || (config.token() == null || config.token().isEmpty())) {
             if (!autoStart) {
-                cfg = SerConfig.argumentPrompt(cfg, console);
-                SerConfig.save(cfg);
+                config = ServerConfig.argumentPrompt(config, scanner);
+                ServerConfig.save(config);
             }
         }
 
@@ -59,9 +59,9 @@ public final class ChatServerApp {
             System.out.println("Creating database....");
             Database.chatDatabase();
             System.out.println("Database created successfully.");
-        } catch (SQLException e) {
-            System.err.println("Failed to create database: " + e.getMessage());
-            e.printStackTrace();
+        } catch (SQLException error) {
+            System.err.println("Failed to create database: " + error.getMessage());
+            error.printStackTrace();
             return;
         }
 
@@ -70,8 +70,8 @@ public final class ChatServerApp {
         if (!autoStart) {
             System.out.println("Type 'start' to start the server, 'quit' to exit.");
             String command;
-            while (console.hasNextLine()) {
-                command = console.nextLine().trim().toLowerCase();
+            while (scanner.hasNextLine()) {
+                command = scanner.nextLine().trim().toLowerCase();
                 if ("start".equals(command)) {
                     break;
                 } else if ("quit".equals(command)) {
@@ -87,34 +87,34 @@ public final class ChatServerApp {
         // The ChatServer is a TCP server that listens for incoming connections on the
         // specified port and host.
         // The ChatServer also handles the server's shutdown process.
-        try (ChatServer tcp = new ChatServer(cfg.port(), cfg.host())) {
+        try (ChatServer tcp = new ChatServer(config.port(), config.host())) {
 
             // Shutdown the server if it is already running.
             // The shutdownServer method is used to close the server socket and release
             // resources.
-            SerConfig.shutdownServer(tcp);
+            ServerConfig.shutdownServer(tcp);
 
             // Create a new ChatServerHub instance to manage connected clients.
             // The ChatServerHub is responsible for broadcasting messages to all connected
             // clients.
-            ChatServerHub hub = SerConfig.startAncillaryServer(cfg);
+            ChatServerHub hub = ServerConfig.startAncillaryServer(config);
 
-            // Print the server information to the console.
+            // Print the server information to the scanner.
             // The server information includes the host, port, and token (if any).
-            System.out.printf("Web server (HTTP/WebSocket) running at http://%s:8080/\n", cfg.host());
-            System.out.printf("WebSocket endpoint at ws://%s:8081/wschat\n", cfg.host());
+            System.out.printf("Web server (HTTP/WebSocket) running at http://%s:8080/\n", config.host());
+            System.out.printf("WebSocket endpoint at ws://%s:8081/wschat\n", config.host());
             System.out.printf("Chat server running on %s:%d  token = %s\n",
-                    cfg.host(), cfg.port(), cfg.token() == null ? "<none>" : cfg.token());
+                    config.host(), config.port(), config.token() == null ? "<none>" : config.token());
 
             System.out.println("Type 'kick <username>' to kick a user, 'quit' to shutdown server.");
 
             // Admin commands thread to handle kicking users and shutting down the server.
-            // This thread listens for commands from the console and performs actions based
+            // This thread listens for commands from the scanner and performs actions based
             // on the input.
             Thread admin = new Thread(() -> {
-                while (console.hasNextLine()) {
+                while (scanner.hasNextLine()) {
                     final int kickLength = 5;
-                    String line = console.nextLine().trim();
+                    String line = scanner.nextLine().trim();
                     if (line.toLowerCase().startsWith("quit")) {
                         hub.serverShutdown(line);
                         System.exit(0);
@@ -130,9 +130,9 @@ public final class ChatServerApp {
             admin.setDaemon(true);
             admin.start();
 
-            SerConfig.acceptLoop(cfg, hub, tcp);
+            ServerConfig.acceptLoop(config, hub, tcp);
 
-        } catch (DeploymentException | IOException e) {
+        } catch (DeploymentException | IOException error) {
             System.err.println("Connection aborted.");
         }
     }

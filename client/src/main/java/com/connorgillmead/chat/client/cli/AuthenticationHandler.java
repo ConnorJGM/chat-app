@@ -2,6 +2,7 @@
 
 package com.connorgillmead.chat.client.cli;
 
+import com.connorgillmead.chat.client.utilities.Authentication;
 import com.connorgillmead.chat.common.ChatMessage;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -16,10 +17,9 @@ import java.util.Scanner;
  * messages to the server.
  */
 public class AuthenticationHandler {
-    private static final int MAX_AUTH_ATTEMPTS = 5;
     private final Scanner scanner;
-    private final PrintWriter output;
-    private final BufferedReader input;
+    private final PrintWriter printWriter;
+    private final BufferedReader bufferedReader;
     private String authenticatedUsername;
     private String token;
 
@@ -30,13 +30,14 @@ public class AuthenticationHandler {
      * and a BufferedReader for reading server responses.
      *
      * @param scanner The Scanner object to read user input from the console.
-     * @param output  The PrintWriter object to send messages to the server.
-     * @param input   The BufferedReader object to read responses from the server.
+     * @param printWriter  The PrintWriter object to send messages to the server.
+     * @param bufferedReader   The BufferedReader object to read responses from the server.
      */
-    public AuthenticationHandler(Scanner scanner, PrintWriter output, BufferedReader input, String token) {
+    public AuthenticationHandler(Scanner scanner, PrintWriter printWriter,
+                                 BufferedReader bufferedReader, String token) {
         this.scanner = scanner;
-        this.output = output;
-        this.input = input;
+        this.printWriter = printWriter;
+        this.bufferedReader = bufferedReader;
         this.token = token;
     }
 
@@ -65,13 +66,13 @@ public class AuthenticationHandler {
         int attempts = 0;
         boolean authenticated = false;
 
-        while (attempts <= MAX_AUTH_ATTEMPTS && !authenticated) {
+        while (attempts <= Authentication.MAX_AUTH_ATTEMPTS && !authenticated) {
             System.out.println("Choose action: [1] Login, [2] Register, [3] Exit");
             String choice = scanner.nextLine().trim();
             String username;
             String password;
-            ChatMessage authorisationRequest = null;
-            String tentativeUsername = null;
+            String tentativeUsername;
+            String actionType;
 
             switch (choice) {
                 case "1":
@@ -79,10 +80,7 @@ public class AuthenticationHandler {
                     username = scanner.nextLine().trim();
                     System.out.print("Enter password: ");
                     password = scanner.nextLine().trim();
-                    authorisationRequest = ChatMessage.login(username, password);
-                    if (token != null && !token.isBlank()) {
-                        authorisationRequest.setToken(token);
-                    }
+                    actionType = "login";
                     tentativeUsername = username;
                     break;
 
@@ -91,14 +89,11 @@ public class AuthenticationHandler {
                     username = scanner.nextLine().trim();
                     System.out.print("Enter new password: ");
                     password = scanner.nextLine().trim();
-                    authorisationRequest = ChatMessage.register(username, password);
-                    if (token != null && !token.isBlank()) {
-                        authorisationRequest.setToken(token);
-                    }
+                    actionType = "register";
                     tentativeUsername = username;
                     break;
 
-                case "3": // Exit
+                case "3":
                     System.out.println("Exiting authentication process.");
                     return false;
 
@@ -108,41 +103,34 @@ public class AuthenticationHandler {
                     continue;
             }
 
-            output.println(authorisationRequest.toJson());
-            output.flush();
-            String responseLine = input.readLine();
-            if (responseLine == null) {
-                System.out.println("Server connection lost. Exiting.");
+            ChatMessage response;
+            try {
+                response = Authentication.sendAuthenticationRequest(actionType, username, password,
+                                                                    this.token, printWriter, bufferedReader);
+            } catch (IOException e) {
+                System.err.println("Error during authentication: " + e.getMessage());
                 return false;
             }
-            ChatMessage response = ChatMessage.fromJson(responseLine);
 
             System.out.println("Server: " + response.getMessage());
 
-            if (!response.isSuccess() && isTokenEror(response.getMessage())) {
+            if (!response.isSuccess() && Authentication.tokenError(response.getMessage())) {
                 System.out.println("Invalid token. Please re-enter your token.");
                 promptForToken();
                 continue;
             }
 
             if (response.isSuccess()) {
-                switch (response.getType()) {
-                    case "login_response" -> {
-                        authenticated = true;
-                        authenticatedUsername = tentativeUsername;
-                    }
-
-                    case "register_response" -> {
-                        authenticated = true;
-                        authenticatedUsername = tentativeUsername;
-                    }
-
-                    default -> {
-                        System.out.println("Unexpected response type: " + response.getType());
-                    }
+                if ("login_response".equals(response.getType())
+                        || "register_response".equals(response.getType())) {
+                    authenticated = true;
+                    authenticatedUsername = tentativeUsername;
+                } else {
+                    System.out.println("Unexpected response type: " + response.getType());
                 }
             } else {
-                System.out.println("Authentication failed: " + (MAX_AUTH_ATTEMPTS - attempts) + " attempts remaining.");
+                System.out.println("Authentication failed: "
+                    + (Authentication.MAX_AUTH_ATTEMPTS - attempts) + " attempts remaining.");
                 attempts++;
             }
         }
@@ -162,10 +150,6 @@ public class AuthenticationHandler {
      */
     public String getAuthenticatedUsername() {
         return authenticatedUsername;
-    }
-
-    private static boolean isTokenEror(String message) {
-        return message != null && message.toLowerCase().contains("token");
     }
 
     private void promptForToken() {

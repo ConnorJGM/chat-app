@@ -42,8 +42,8 @@ public final class MessageDBHandler {
 
             preparedStatement.executeUpdate();
             return true;
-        } catch (SQLException e) {
-            System.err.println("Error inserting message for " + username + e.getMessage());
+        } catch (SQLException error) {
+            System.err.println("Error inserting message for " + username + error.getMessage());
             return false;
         }
     }
@@ -72,8 +72,8 @@ public final class MessageDBHandler {
                     messages.add(ChatMessage.messageHistory(dbUsername, content, timestamp));
                 }
             }
-        } catch (SQLException e) {
-            System.err.println("Error retrieving messages for " + e.getMessage());
+        } catch (SQLException error) {
+            System.err.println("Error retrieving messages for " + error.getMessage());
         }
         Collections.reverse(messages);
         return messages;
@@ -95,8 +95,8 @@ public final class MessageDBHandler {
                     return resultSet.getInt("id");
                 }
             }
-        } catch (SQLException e) {
-            System.err.println("Error retrieving user ID for " + username + ": " + e.getMessage());
+        } catch (SQLException error) {
+            System.err.println("Error retrieving user ID for " + username + ": " + error.getMessage());
         }
         return null;
     }

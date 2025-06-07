@@ -33,8 +33,8 @@ public final class ChatClient implements AutoCloseable {
 
         // Create an SSLContext to manage the SSL/TLS protocol.
         // The SSLContext is initialised with a TrustManager that trusts all certificates.
-        SSLContext sslCtx = SSLContext.getInstance("TLS");
-        sslCtx.init(null,
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null,
             new TrustManager[]{new X509TrustManager() {
                 public void checkClientTrusted(java.security.cert.X509Certificate[] c, String a) {}
 
@@ -49,8 +49,8 @@ public final class ChatClient implements AutoCloseable {
 
         // Create an SSLSocketFactory from the SSLContext.
         // The SSLSocketFactory is used to create SSL sockets for secure communication.
-        SSLSocketFactory ssf = sslCtx.getSocketFactory();
-        this.socket = ssf.createSocket(host, port);
+        SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+        this.socket = sslSocketFactory.createSocket(host, port);
     }
 
     /** Returns the socket used to communicate with the server. */

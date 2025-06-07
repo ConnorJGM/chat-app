@@ -2,6 +2,7 @@
 
 package com.connorgillmead.chat.client.tui;
 
+import com.connorgillmead.chat.client.utilities.Authentication;
 import com.connorgillmead.chat.common.ChatMessage;
 import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.gui2.BasicWindow;
@@ -63,8 +64,8 @@ final class TuiAuthenticator {
      * @param gui               The MultiWindowTextGUI instance for displaying
      *                          windows and dialogs.
      * @param screen            The Screen instance for rendering the TUI.
-     * @param output            The PrintWriter for sending messages to the server.
-     * @param input             The BufferedReader for reading responses from the
+     * @param printWriter            The PrintWriter for sending messages to the server.
+     * @param bufferedReader             The BufferedReader for reading responses from the
      *                          server.
      * @param authenticatedUser An AtomicReference to store the authenticated
      *                          username.
@@ -74,8 +75,8 @@ final class TuiAuthenticator {
      * @throws IOException If an I/O error occurs during communication with the
      *                     server.
      */
-    public static boolean authenticate(MultiWindowTextGUI gui, Screen screen, PrintWriter output,
-            BufferedReader input, AtomicReference<String> authenticatedUser,
+    public static boolean authenticate(MultiWindowTextGUI gui, Screen screen, PrintWriter printWriter,
+            BufferedReader bufferedReader, AtomicReference<String> authenticatedUser,
             AtomicReference<String> tokenReference, int maxAttempts) throws IOException {
         int attempts = 0;
         boolean authenticated = false;
@@ -121,7 +122,6 @@ final class TuiAuthenticator {
 
             // Prepare for user input for login or registration.
             String tentativeUsername;
-            ChatMessage authenticationRequest;
             BasicWindow credentialWindow = new BasicWindow("login".equals(action) ? "Login" : "Register");
             Panel credentialPanel = new Panel(new GridLayout(2));
             TextBox usernameBox = new TextBox().setPreferredSize(new TerminalSize(column, 1));
@@ -173,15 +173,18 @@ final class TuiAuthenticator {
             String username = usernameBox.getText().trim();
             String password = passwordBox.getText().trim();
             tentativeUsername = username;
-            authenticationRequest = "login".equals(action)
-                    ? ChatMessage.login(username, password)
-                    : ChatMessage.register(username, password);
-            authenticationRequest.setToken(currentToken);
 
-            output.println(authenticationRequest.toJson());
-            output.flush();
+            ChatMessage responseMessage;
 
-            ChatMessage responseMessage = ChatMessage.fromJson(input.readLine());
+            try {
+                responseMessage = Authentication.sendAuthenticationRequest(action, username, password,
+                                                                           currentToken, printWriter, bufferedReader);
+            } catch (IOException error) {
+                new MessageDialogBuilder().setTitle("Error")
+                        .setText("An error occurred during authentication: " + error.getMessage())
+                        .addButton(MessageDialogButton.OK).build().showDialog(gui);
+                return false;
+            }
 
             if (responseMessage.isSuccess()) {
                 authenticatedUser.set(tentativeUsername);
@@ -190,7 +193,7 @@ final class TuiAuthenticator {
                 return true;
             }
 
-            if (isTokenError(responseMessage.getMessage())) {
+            if (Authentication.tokenError(responseMessage.getMessage())) {
                 new MessageDialogBuilder()
                         .setTitle("Token Error")
                         .setText(responseMessage.getMessage())
@@ -211,18 +214,6 @@ final class TuiAuthenticator {
             authorisationFail(gui, responseMessage.getMessage(), remainingAttempts);
         }
         return false;
-    }
-
-    /**
-     * Checks if the error message indicates a token-related issue.
-     * This method checks if the provided message contains the word "token" in a
-     * case-insensitive manner.
-     *
-     * @param message The error message to check.
-     * @return true if the message contains "token", false otherwise.
-     */
-    private static boolean isTokenError(String message) {
-        return message != null && message.toLowerCase().contains("token");
     }
 
     /**
@@ -272,11 +263,8 @@ final class TuiAuthenticator {
             attemptsMessage += " No attempts remaining.";
         }
         new MessageDialogBuilder()
-                .setTitle("Authentication Failed")
-                .setText(attemptsMessage)
-                .addButton(MessageDialogButton.OK)
-                .build()
-                .showDialog(gui);
+                .setTitle("Authentication Failed").setText(attemptsMessage)
+                .addButton(MessageDialogButton.OK).build().showDialog(gui);
     }
 
     /**
@@ -286,11 +274,8 @@ final class TuiAuthenticator {
      * @param username The username of the authenticated user.
      */
     private static void showSuccess(MultiWindowTextGUI gui, String username) {
-        new MessageDialogBuilder()
-                .setTitle("Success")
+        new MessageDialogBuilder().setTitle("Success")
                 .setText("Authentication successful. Welcome, " + username + "!")
-                .addButton(MessageDialogButton.OK)
-                .build()
-                .showDialog(gui);
+                .addButton(MessageDialogButton.OK).build().showDialog(gui);
     }
 }

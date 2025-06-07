@@ -20,7 +20,7 @@ import javax.net.ssl.SSLServerSocketFactory;
 public final class ChatServer implements AutoCloseable {
 
     // Constant keystore password for usability.
-    private static final String KS_PASSWORD = "changeit";
+    private static final String KEYSTORE_PASSWORD = "changeit";
 
     // The server socket used to accept client connections.
     private final ServerSocket serverSocket;
@@ -42,40 +42,38 @@ public final class ChatServer implements AutoCloseable {
         // The keystore contains the server's private key and certificate chain.
         // The keystore is used to establish a secure connection with the client.
         // The keystore password is "changeit" (this should be changed in a production environment).
-        KeyStore ks = KeyStore.getInstance("PKCS12");
-        try (InputStream in = ChatServer.class.getResourceAsStream("/keystore.p12")) {
-            ks.load(in, KS_PASSWORD.toCharArray());
+        KeyStore keystore = KeyStore.getInstance("PKCS12");
+        try (InputStream inputStream = ChatServer.class.getResourceAsStream("/keystore.p12")) {
+            keystore.load(inputStream, KEYSTORE_PASSWORD.toCharArray());
         }
 
         // Create a KeyManagerFactory to manage the keys in the keystore.
         // The KeyManagerFactory is used to create key managers that manage the keys in the keystore.
         // The KeyManagerFactory is initialised with the keystore and the keystore password.
         // The KeyManagerFactory uses the default algorithm to create the key managers.
-        KeyManagerFactory kmf =
+        KeyManagerFactory keyManagerFactory =
             KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        kmf.init(ks, KS_PASSWORD.toCharArray());
+        keyManagerFactory.init(keystore, KEYSTORE_PASSWORD.toCharArray());
 
         // Create an SSLContext to manage the SSL/TLS protocol.
         // The SSLContext is initialised with the key managers created by the KeyManagerFactory.
         // The SSLContext is used to create SSL sockets for secure communication.
         // The SSLContext uses the TLS protocol for secure communication.
-        SSLContext sslCtx = SSLContext.getInstance("TLS");
-        sslCtx.init(kmf.getKeyManagers(), null, null);
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(keyManagerFactory.getKeyManagers(), null, null);
 
         // Create an SSLServerSocketFactory to create SSL server sockets.
         // The SSLServerSocketFactory is used to create server sockets that support SSL/TLS.
-        SSLServerSocketFactory ssf = sslCtx.getServerSocketFactory();
+        SSLServerSocketFactory sslServerSocketFactory = sslContext.getServerSocketFactory();
 
         // Bind to the specified host.
-        InetAddress bindAddr = InetAddress.getByName(host);
+        InetAddress bindAddress = InetAddress.getByName(host);
 
         // Create a server socket that listens on the specified port.
         // The server socket is used to accept incoming connections from clients.
-        this.serverSocket = ssf.createServerSocket(
-            port,
-            0,
-            bindAddr
-            );
+        this.serverSocket = sslServerSocketFactory.createServerSocket(
+            port, 0, bindAddress
+        );
     }
 
     /**

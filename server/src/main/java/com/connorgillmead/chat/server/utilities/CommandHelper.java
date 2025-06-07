@@ -25,19 +25,19 @@ public final class CommandHelper {
     /**
      * Handles the command messages from the client.
      * This method checks if the message is a command and processes it accordingly.
-     * @param msg The message to process.
+     * @param message The message to process.
      * @param hub The ChatServerHub instance managing all clients.
      * @param send The ClientHandler instance to send messages to the client.
      * @return true if the message was a command, false otherwise.
      *         If the message was a command, it will be processed and a response will be sent to the client.
      */
-    public static boolean command(ChatMessage msg, ChatServerHub hub, ClientHandler send) {
-        String body = msg.getBody().trim().toLowerCase();
+    public static boolean command(ChatMessage message, ChatServerHub hub, ClientHandler send) {
+        String body = message.getBody().trim().toLowerCase();
 
         // Check for a guess in the number game.
         if (hub.hasActiveNumberGame() && body.matches("\\d+")) {
             int guess = Integer.parseInt(body);
-            String reply = hub.checkGuess(msg.getUser(), guess);
+            String reply = hub.checkGuess(message.getUser(), guess);
             if (reply != null) {
                 hub.broadcast(ChatMessage.of("Server", reply));
                 return true;
@@ -49,13 +49,13 @@ public final class CommandHelper {
             String[] options = Arrays.stream(parts, 1, parts.length)
                     .map(String::trim)
                     .toArray(String[]::new);
-            String reply = hub.startPoll(msg.getUser(), question, options);
+            String reply = hub.startPoll(message.getUser(), question, options);
             hub.broadcast(ChatMessage.of("Server", reply));
             return true;
         // Check for a vote in the poll.
         } else if (hub.hasActivePoll() && body.matches("\\d+")) {
             int vote = Integer.parseInt(body);
-            String voteReply = hub.vote(msg.getUser(), vote);
+            String voteReply = hub.vote(message.getUser(), vote);
             hub.broadcast(ChatMessage.of("Server", voteReply));
             return true;
         } else {
@@ -80,14 +80,14 @@ public final class CommandHelper {
                 // Check if the message is a command.
                 // The command format is "start number game".
                 case "start number game" -> {
-                    String startMsg = hub.startNumberGame(msg.getUser());
+                    String startMsg = hub.startNumberGame(message.getUser());
                     hub.broadcast(ChatMessage.of("Server", startMsg));
                     return true;
                 }
                 // Check if the message is a command to finish the poll.
                 // The command format is "finish poll".
                 case "finish poll" -> {
-                    String reply = hub.finish(msg.getUser());
+                    String reply = hub.finish(message.getUser());
                     hub.broadcast(ChatMessage.of("Server", reply));
                     return true;
                 }

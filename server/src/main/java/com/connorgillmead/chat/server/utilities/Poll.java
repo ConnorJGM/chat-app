@@ -61,16 +61,16 @@ public class Poll {
      * @return A message indicating that the poll has started, along with the question and options.
      */
     public String getStartMessage() {
-        var sb = new StringBuilder(owner)
+        var stringBuilder = new StringBuilder(owner)
             .append(" has started a poll: ")
             .append(question)
             .append("\nOptions:\n");
         int i = 1;
         for (String option : options.keySet()) {
-            sb.append(i++).append(". ").append(option).append("\n");
+            stringBuilder.append(i++).append(". ").append(option).append("\n");
         }
-        sb.append("Vote by sending the option number.");
-        return sb.toString();
+        stringBuilder.append("Vote by sending the option number.");
+        return stringBuilder.toString();
     }
 
     /**
@@ -101,10 +101,10 @@ public class Poll {
      */
     public String finish() {
         active = false;
-        var sb = new StringBuilder("Poll results:\n");
+        var stringBuilder = new StringBuilder("Poll results:\n");
         for (Map.Entry<String, Integer> entry : options.entrySet()) {
-            sb.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+            stringBuilder.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
         }
-        return sb.toString();
+        return stringBuilder.toString();
     }
 }

@@ -65,16 +65,16 @@ public class WebHandler extends ClientHandler implements Closeable {
      * Sends a message to the client over the WebSocket connection.
      * This method is used to send messages to the client in JSON format.
      * It uses the Jakarta WebSocket API to send the message.
-     * @param msg The message to send to the client.
+     * @param message The message to send to the client.
      *            The message is formatted as a JSON object.
      */
     @Override
-    public void send(ChatMessage msg) {
+    public void send(ChatMessage message) {
         if (session.isOpen()) {
             try {
-                session.getBasicRemote().sendText(msg.toJson());
-            } catch (IOException e) {
-                e.printStackTrace();
+                session.getBasicRemote().sendText(message.toJson());
+            } catch (IOException error) {
+                error.printStackTrace();
             }
         }
     }
@@ -87,8 +87,8 @@ public class WebHandler extends ClientHandler implements Closeable {
     public void close() {
         try {
             session.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException error) {
+            error.printStackTrace();
         }
     }
 }

@@ -69,46 +69,47 @@ public class WebSocketChatEndpoint {
     */
     @OnMessage
     public void onMessage(String json, Session session) throws IOException {
-        ChatMessage msg = ChatMessage.fromJson(json);
+        ChatMessage message = ChatMessage.fromJson(json);
         WebHandler handler = HANDLER_MAP.get(session);
 
         // Check if the message is a "hello" message.
         // If the handler is not authenticated, check if the message is a "hello" message.
         if (handler != null && !handler.isAuthenticated()) {
-            switch  (msg.getType().trim()) {
+            switch  (message.getType().trim()) {
                 case "login":
-                    handleLogin(msg, handler, session);
+                    handleLogin(message, handler, session);
                     return;
                 case "register":
-                    handleRegister(msg, handler, session);
+                    handleRegister(message, handler, session);
                     return;
                 case "hello":
                     // Required token validation
                     // If the server requires a token, check if the provided token matches the required token.
                     String requiredToken = hub.getToken();
-                    if (requiredToken != null && !requiredToken.isBlank() && !requiredToken.equals(msg.getToken())) {
-                        System.out.println("WebSocket: Invalid or missing token for user: " + msg.getUser());
+                    if (requiredToken != null && !requiredToken.isBlank()
+                        && !requiredToken.equals(message.getToken())) {
+                        System.out.println("WebSocket: Invalid or missing token for user: " + message.getUser());
                         session.close();
                         return;
                     }
                     // Check if the username is already in use.
                     // If the username is already in use, close the session.
-                    if (!hub.reserveName(msg.getUser())) {
-                        System.out.println("WebSocket: Username already in use: " + msg.getUser());
+                    if (!hub.reserveName(message.getUser())) {
+                        System.out.println("WebSocket: Username already in use: " + message.getUser());
                         session.close();
                         return;
                     }
                     // Set the username and authenticated status for the handler.
-                    handler.setUsername(msg.getUser());
+                    handler.setUsername(message.getUser());
                     handler.setAuthenticated(true);
                     hub.getHistory().forEach(handler::send);
                     hub.addClient(handler);
                     System.out.println(handler.getUsername() + " connected on WebSocket: " + session.getId());
                     // Broadcast the "hello" message to all connected clients.
-                    hub.broadcast(ChatMessage.hello(msg.getUser(), null));
+                    hub.broadcast(ChatMessage.hello(message.getUser(), null));
                     return;
                 default:
-                    handler.send(ChatMessage.error("Invalid message type: " + msg.getType()));
+                    handler.send(ChatMessage.error("Invalid message type: " + message.getType()));
                     return;
             }
         }
@@ -116,19 +117,19 @@ public class WebSocketChatEndpoint {
         // If the handler is authenticated, process the message.
         // If the message is a command, handle it accordingly.
         if (handler != null && handler.isAuthenticated()) {
-            if ("hello".equals(msg.getType())) {
+            if ("hello".equals(message.getType())) {
                 hub.broadcast(ChatMessage.hello(handler.getUsername(), null));
                 return;
             }
-            if (CommandHelper.command(msg, hub, handler)) {
+            if (CommandHelper.command(message, hub, handler)) {
                 return;
             }
-            if ("text".equals(msg.getType())) {
-                MessageDBHandler.addMessage(handler.getUsername(), msg.getBody());
-                ChatMessage stamped = ChatMessage.of(handler.getUsername(), msg.getBody());
+            if ("text".equals(message.getType())) {
+                MessageDBHandler.addMessage(handler.getUsername(), message.getBody());
+                ChatMessage stamped = ChatMessage.of(handler.getUsername(), message.getBody());
                 hub.broadcast(stamped);
             } else {
-                hub.broadcast(msg);
+                hub.broadcast(message);
             }
         }
     }
@@ -255,25 +256,25 @@ public class WebSocketChatEndpoint {
     /**
      * Handles errors that occur during WebSocket communication.
      * This method is called when an error occurs in the WebSocket connection.
-     * @param t The Throwable object representing the error.
+     * @param throwable The Throwable object representing the error.
     */
     @OnError
-    public void onError(Throwable t) {
-        t.printStackTrace();
+    public void onError(Throwable throwable) {
+        throwable.printStackTrace();
     }
 
     /**
      * Sends a message to all connected WebSocket clients.
-     * @param msg The ChatMessage to send.
+     * @param message The ChatMessage to send.
     */
-    public static void sendToAll(ChatMessage msg) {
-        String json = msg.toJson();
-        for (Session s : SESSIONS) {
-            if (s.isOpen()) {
+    public static void sendToAll(ChatMessage message) {
+        String json = message.toJson();
+        for (Session session : SESSIONS) {
+            if (session.isOpen()) {
                 try {
-                    s.getBasicRemote().sendText(json);
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    session.getBasicRemote().sendText(json);
+                } catch (IOException error) {
+                    error.printStackTrace();
                 }
             }
         }

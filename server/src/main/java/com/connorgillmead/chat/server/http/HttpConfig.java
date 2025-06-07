@@ -31,11 +31,11 @@ public final class HttpConfig {
      * @throws IOException If an I/O error occurs while reading the file.
      */
     public static String loadHtml(String resourcePath) throws IOException {
-        try (InputStream input = HttpConfig.class.getClassLoader().getResourceAsStream(resourcePath)) {
-            if (input == null) {
+        try (InputStream inputStream = HttpConfig.class.getClassLoader().getResourceAsStream(resourcePath)) {
+            if (inputStream == null) {
                 throw new FileNotFoundException("Cannot find resource: " + resourcePath);
             }
-            return new String(input.readAllBytes(), StandardCharsets.UTF_8);
+            return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
         }
     }
 
@@ -50,11 +50,11 @@ public final class HttpConfig {
     public static Map<String, String> parseFormData(String formData) {
         Map<String, String> map = new HashMap<>();
         for (String pair : formData.split("&")) {
-            String[] kv = pair.split("=", 2);
-            if (kv.length == 2) {
-                String key = URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
-                String val = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
-                map.put(key, val);
+            String[] keyValue = pair.split("=", 2);
+            if (keyValue.length == 2) {
+                String key = URLDecoder.decode(keyValue[0], StandardCharsets.UTF_8);
+                String value = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
+                map.put(key, value);
             }
         }
         return map;

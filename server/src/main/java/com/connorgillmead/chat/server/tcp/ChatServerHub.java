@@ -68,12 +68,12 @@ public final class ChatServerHub {
      * Private constructor to prevent instantiation.
      * This class is not meant to be instantiated; it only contains static methods.
      *
-     * @param c The client handler to add.
+     * @param client The client handler to add.
      */
-    public void addClient(ClientHandler c) {
-        clients.add(c);
+    public void addClient(ClientHandler client) {
+        clients.add(client);
         append(String.format("[%s] JOIN %s",
-                getCurrentTime(), c.getUsername()));
+                getCurrentTime(), client.getUsername()));
         broadcast(ChatMessage.userList(getUsernames()));
     }
 
@@ -82,12 +82,12 @@ public final class ChatServerHub {
      * This method is called when a client disconnects from the server.
      * It removes the client from the set of connected clients and logs the event.
      *
-     * @param c The client handler to remove.
+     * @param client The client handler to remove.
      */
-    public void removeClient(ClientHandler c) {
-        clients.remove(c);
+    public void removeClient(ClientHandler client) {
+        clients.remove(client);
         append(String.format("[%s] LEAVE %s",
-                getCurrentTime(), c.getUsername()));
+                getCurrentTime(), client.getUsername()));
         broadcast(ChatMessage.userList(getUsernames()));
     }
 
@@ -103,8 +103,8 @@ public final class ChatServerHub {
      *         client.
      */
     public synchronized boolean reserveName(String user) {
-        for (String u : namesInUse) {
-            if (u.equalsIgnoreCase(user)) {
+        for (String userCheck : namesInUse) {
+            if (userCheck.equalsIgnoreCase(user)) {
                 return false;
             }
         }
@@ -141,7 +141,7 @@ public final class ChatServerHub {
      */
     public synchronized void releaseName(String user) {
         if (user != null) {
-            namesInUse.removeIf(u -> u.equalsIgnoreCase(user));
+            namesInUse.removeIf(userCheck -> userCheck.equalsIgnoreCase(user));
         }
     }
 
@@ -151,22 +151,22 @@ public final class ChatServerHub {
      * It appends the message to the log and sends it to all connected clients.
      * History is maintained for the last 100 messages.
      *
-     * @param msg The message to broadcast.
+     * @param message The message to broadcast.
      */
-    public void broadcast(ChatMessage msg) {
+    public void broadcast(ChatMessage message) {
         // Append the message to the log file if not "roster".
-        if (!"roster".equals(msg.getType())) {
-            append("[" + getCurrentTime() + "]" + msg.toLogJson());
+        if (!"roster".equals(message.getType())) {
+            append("[" + getCurrentTime() + "]" + message.toLogJson());
         }
 
         // Send to all TCP clients.
         for (ClientHandler handler : clients) {
             if (!(handler instanceof WebHandler)) {
-                handler.send(msg);
+                handler.send(message);
             }
         }
         // Send to all WebSocket clients.
-        WebSocketChatEndpoint.sendToAll(msg);
+        WebSocketChatEndpoint.sendToAll(message);
     }
 
     /**
@@ -204,9 +204,9 @@ public final class ChatServerHub {
         try {
             final int shutdownDelay = 200;
             Thread.sleep(shutdownDelay);
-        } catch (InterruptedException e) {
+        } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
-            System.err.println("Server shutdown interrupted: " + e.getMessage());
+            System.err.println("Server shutdown interrupted: " + error.getMessage());
         }
 
         System.out.println("Disconnecting all clients.");
@@ -275,8 +275,8 @@ public final class ChatServerHub {
                     line + System.lineSeparator(),
                     StandardOpenOption.CREATE,
                     StandardOpenOption.APPEND);
-        } catch (IOException e) {
-            System.err.println("LOG ERROR: " + e.getMessage());
+        } catch (IOException error) {
+            System.err.println("LOG ERROR: " + error.getMessage());
         }
     }
 

@@ -1,4 +1,4 @@
-// CliConfig.java
+// ClientConfig.java
 
 package com.connorgillmead.chat.client.cli;
 
@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Scanner;
 
 /**
- * CliConfig is a record that holds the configuration for the chat client.
+ * ClientConfig is a record that holds the configuration for the chat client.
  * It contains the host name, port number, user name, and access token.
  * The record is immutable, meaning that once it is created, its values cannot be changed.
  * This is useful for ensuring that the configuration remains consistent throughout the program.
@@ -21,7 +21,7 @@ import java.util.Scanner;
  * @param token The access token for authentication.
  *             This is used to verify the identity of the client connecting to the server.
  */
-public record CliConfig(String host, int port, String user, String token) {
+public record ClientConfig(String host, int port, String user, String token) {
 
     /**
      * Default and maximum port number for the chat server.
@@ -46,17 +46,17 @@ public record CliConfig(String host, int port, String user, String token) {
     }
 
     /**
-     * Creates a new CliConfig object from command-line arguments.
+     * Creates a new ClientConfig object from command-line arguments.
      * The method parses the command-line arguments and prompts the user for any missing values.
-     * @param args Command-line arguments passed to the program.
+     * @param arguments Command-line arguments passed to the program.
      *             The first argument is the host name, the second is the port number,
      *            * the third is the user name, and the fourth is the access token.
-     * @param console Scanner object to read user input from the console.
+     * @param scanner Scanner object to read user input from the console.
      *               This is used to prompt the user for any missing values.
-     * @return A new CliConfig object with the provided or default values.
+     * @return A new ClientConfig object with the provided or default values.
      *         The object contains the host name, port number, user name, and access token.
      */
-    public static CliConfig fromArgs(String[] args, Scanner console) {
+    public static ClientConfig fromArgs(String[] arguments, Scanner scanner) {
         // Default values for host, port, user, and token.
         // If no arguments are provided, the user is prompted for host, port, token, and username.
         String host = null;
@@ -64,22 +64,22 @@ public record CliConfig(String host, int port, String user, String token) {
         String token = null;
 
         // Begin looping through command-line arguments.
-        for (int i = 0; i < args.length;) {
-            switch (args[i]) {
+        for (int i = 0; i < arguments.length;) {
+            switch (arguments[i]) {
                 case "--host" -> {
-                    host = args[i + 1];
+                    host = arguments[i + 1];
                     i += 2;
                 }
                 case "--port" -> {
-                    port = Integer.parseInt(args[i + 1]);
+                    port = Integer.parseInt(arguments[i + 1]);
                     i += 2;
                 }
                 case "--token" -> {
-                    token = args[i + 1];
+                    token = arguments[i + 1];
                     i += 2;
                 }
                 default -> {
-                    port = Integer.parseInt(args[i]);
+                    port = Integer.parseInt(arguments[i]);
                     i += 1;
                 }
             }
@@ -88,16 +88,16 @@ public record CliConfig(String host, int port, String user, String token) {
         // If no host argument is given, prompt user for host name.
         if (host == null) {
             System.out.print("Server host [localhost]: ");
-            String h = console.nextLine().trim();
-            host = h.isEmpty() ? "localhost" : h;
+            String hostCheck = scanner.nextLine().trim();
+            host = hostCheck.isEmpty() ? "localhost" : hostCheck;
         }
 
         // If no port number is given, prompt user for port number.
         if (port == -1) {
             System.out.print("Server port [" + defaultPort() + "]: ");
-            String p = console.nextLine().trim();
-            if (!p.isEmpty()) {
-                port = Integer.parseInt(p);
+            String portCheck = scanner.nextLine().trim();
+            if (!portCheck.isEmpty()) {
+                port = Integer.parseInt(portCheck);
             } else {
                 port = defaultPort();
             }
@@ -106,11 +106,11 @@ public record CliConfig(String host, int port, String user, String token) {
         // If no token is given, prompt user for a token.
         if (token == null) {
             System.out.print("Access token (or Enter for none): ");
-            String t = console.nextLine().trim();
-            token = t.isEmpty() ? null : t;
+            String tokenCheck = scanner.nextLine().trim();
+            token = tokenCheck.isEmpty() ? null : tokenCheck;
         }
 
-        return new CliConfig(host, port, null, token);
+        return new ClientConfig(host, port, null, token);
     }
 
     /**
@@ -121,10 +121,10 @@ public record CliConfig(String host, int port, String user, String token) {
      * @param user The user name of the client.
      * @param token The access token for authentication.
      *             This is used to verify the identity of the client connecting to the server.
-     * @return A new CliConfig object with the provided values.
+     * @return A new ClientConfig object with the provided values.
      *         The object contains the host name, port number, user name, and access token.
      */
-    public static CliConfig validateCreate(String host,
+    public static ClientConfig validateCreate(String host,
                                        int port,
                                        String user,
                                        String token) {
@@ -138,7 +138,7 @@ public record CliConfig(String host, int port, String user, String token) {
         if (user == null || user.isEmpty()) {
             throw new IllegalArgumentException("User cannot be null or empty.");
         }
-        return new CliConfig(host, port, user, token);
+        return new ClientConfig(host, port, user, token);
     }
 
     // Default port number getter for the chat server.
@@ -153,7 +153,7 @@ public record CliConfig(String host, int port, String user, String token) {
     * It runs in a separate thread to allow for concurrent message sending and receiving.
     * The thread will continue to run until the socket is closed or an I/O error occurs.
     */
-    public static void startReader(Socket socket, String user, BufferedReader input) {
+    public static void startReader(Socket socket, String user, BufferedReader bufferedReader) {
 
         // Create a new thread to read messages from the server.
         new Thread(() -> {
@@ -162,7 +162,7 @@ public record CliConfig(String host, int port, String user, String token) {
 
                 // Read messages from the server in a loop.
                 // Each message is expected to be in JSON format.
-                while ((line = input.readLine()) != null) {
+                while ((line = bufferedReader.readLine()) != null) {
                     ChatMessage message = ChatMessage.fromJson(line);
 
                     // If the message type is "server-shutdown", print a message and exit the application.
@@ -209,9 +209,9 @@ public record CliConfig(String host, int port, String user, String token) {
                     }
                 }
                 socket.close();
-            } catch (IOException e) {
+            } catch (IOException error) {
                 if (!socket.isClosed()) {
-                    System.err.println("Error reading from server: " + e.getMessage());
+                    System.err.println("Error reading from server: " + error.getMessage());
                 }
             }
         }).start();

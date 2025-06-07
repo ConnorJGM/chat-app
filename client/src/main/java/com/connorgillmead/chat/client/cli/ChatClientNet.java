@@ -26,7 +26,7 @@ public final class ChatClientNet {
 
     /**
      * Read loop for the client.
-     * This method runs in a separate thread and reads messages from the server.
+     * This method runs input a separate thread and reads messages from the server.
      * It puts the messages into a blocking queue for processing.
      * The loop continues until the socket is closed or an error occurs.
      * @param socket The socket to read from.
@@ -36,20 +36,20 @@ public final class ChatClientNet {
      * @throws SocketException If the socket is closed.
      */
     public static void readLoop(Socket socket, BlockingQueue<ChatMessage> queue) {
-        try (BufferedReader in = new BufferedReader(
+        try (BufferedReader bufferedReader = new BufferedReader(
                 new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
-            while ((line = in.readLine()) != null) {
+            while ((line = bufferedReader.readLine()) != null) {
                 try {
-                    ChatMessage m = ChatMessage.fromJson(line);
-                    queue.put(m);
-                } catch (JsonSyntaxException | IllegalStateException e) {
+                    ChatMessage message = ChatMessage.fromJson(line);
+                    queue.put(message);
+                } catch (JsonSyntaxException | IllegalStateException error) {
                     continue;
                 }
             }
-        } catch (SocketException e) {
-        } catch (IOException | InterruptedException e) {
-            System.err.println("NET error: " + e.getMessage());
+        } catch (SocketException error) {
+        } catch (IOException | InterruptedException error) {
+            System.err.println("NET error: " + error.getMessage());
         }
     }
 }

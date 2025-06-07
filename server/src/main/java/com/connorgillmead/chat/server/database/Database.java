@@ -100,9 +100,9 @@ public final class Database {
             preparedStatement.executeUpdate();
             System.out.println("User " + username + " added successfully.");
             return true;
-        } catch (SQLException e) {
-            System.err.println("Error adding user: " + username + ": " + e.getMessage());
-            e.printStackTrace();
+        } catch (SQLException error) {
+            System.err.println("Error adding user: " + username + ": " + error.getMessage());
+            error.printStackTrace();
             return false;
         }
     }
@@ -126,8 +126,8 @@ public final class Database {
                     return resultSet.getString("pass_hash");
                 }
             }
-        } catch (SQLException e) {
-            System.err.println("Error retrieving password hash for user: " + username + ": " + e.getMessage());
+        } catch (SQLException error) {
+            System.err.println("Error retrieving password hash for user: " + username + ": " + error.getMessage());
         }
         return null;
     }
@@ -150,8 +150,8 @@ public final class Database {
                     return resultSet.getInt(1) > 0;
                 }
             }
-        } catch (SQLException e) {
-            System.err.println("Error checking if user exists: " + username + ": " + e.getMessage());
+        } catch (SQLException error) {
+            System.err.println("Error checking if user exists: " + username + ": " + error.getMessage());
         }
         return false;
     }

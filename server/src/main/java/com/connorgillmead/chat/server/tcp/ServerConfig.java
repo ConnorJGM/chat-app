@@ -1,4 +1,4 @@
-// SerConfig.java
+// ServerConfig.java
 
 package com.connorgillmead.chat.server.tcp;
 
@@ -25,7 +25,7 @@ import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSocket;
 
 /**
- * SerConfig is a record that holds the configuration for the chat server.
+ * ServerConfig is a record that holds the configuration for the chat server.
  * It contains the host name, port number, access token, and flags indicating
  * whether the host and port were provided as command-line arguments.
  * The record is immutable, meaning that once it is created, its values cannot
@@ -48,7 +48,7 @@ import javax.net.ssl.SSLSocket;
  *                  This is used to determine whether to prompt the user for a
  *                  port number.
  */
-public record SerConfig(String host, int port, String token, boolean hostGiven, boolean portGiven) {
+public record ServerConfig(String host, int port, String token, boolean hostGiven, boolean portGiven) {
 
     // Default port number for the chat server.
     // This is the port number that the server will listen on for incoming
@@ -70,20 +70,20 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
     private static Thread shutdownHook;
 
     /**
-     * Creates a new SerConfig object from command-line arguments.
+     * Creates a new ServerConfig object from command-line arguments.
      * The method parses the command-line arguments and prompts the user for any
      * missing values.
      *
-     * @param args Command-line arguments passed to the program.
+     * @param arguments Command-line arguments passed to the program.
      *             The first argument is the host name, the second is the port
      *             number,
      *             * the third is the access token.
-     * @return A new SerConfig object with the provided or default values.
+     * @return A new ServerConfig object with the provided or default values.
      *         The object contains the host name, port number, and access token.
      */
-    public static SerConfig parseArgs(String[] args) {
-        List<String> argList = new ArrayList<>(Arrays.asList(args));
-        boolean autoStart = argList.remove("--auto-start");
+    public static ServerConfig parseArgs(String[] arguments) {
+        List<String> argumentList = new ArrayList<>(Arrays.asList(arguments));
+        boolean autoStart = argumentList.remove("--auto-start");
 
         // Default values for host, port, and token.
         String host = "localhost";
@@ -98,10 +98,10 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
         // requiring the user to provide command-line arguments.
         if (autoStart && Files.exists(CONFIG_FILE)) {
             Properties properties = new Properties();
-            try (InputStream input = Files.newInputStream(CONFIG_FILE)) {
-                properties.load(input);
-            } catch (IOException e) {
-                System.err.println("Failed to load configuration: " + e.getMessage());
+            try (InputStream inputStream = Files.newInputStream(CONFIG_FILE)) {
+                properties.load(inputStream);
+            } catch (IOException error) {
+                System.err.println("Failed to load configuration: " + error.getMessage());
             }
             host = properties.getProperty("host", host);
             port = Integer.parseInt(properties.getProperty("port", String.valueOf(port)));
@@ -111,20 +111,20 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
             portGiven = true;
         } else {
             // Begin looping through command-line arguments.
-            for (int i = 0; i < argList.size();) {
-                switch (argList.get(i)) {
+            for (int i = 0; i < argumentList.size();) {
+                switch (argumentList.get(i)) {
                     case "--host" -> {
-                        host = argList.get(i + 1);
+                        host = argumentList.get(i + 1);
                         hostGiven = true;
                         i += 2;
                     }
                     case "--port" -> {
-                        port = Integer.parseInt(argList.get(i + 1));
+                        port = Integer.parseInt(argumentList.get(i + 1));
                         portGiven = true;
                         i += 2;
                     }
                     case "--token" -> {
-                        token = argList.get(i + 1);
+                        token = argumentList.get(i + 1);
                         i += 2;
                     }
                     default -> {
@@ -133,7 +133,7 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
                 }
             }
         }
-        return new SerConfig(host, port, token, hostGiven, portGiven);
+        return new ServerConfig(host, port, token, hostGiven, portGiven);
     }
 
     /**
@@ -141,19 +141,19 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
      * This method writes the host, port, and token to a properties file named
      * server_config.properties.
      * If the token is null, it saves an empty string for the token.
-     * @param config The SerConfig object containing the server configuration.
+     * @param config The ServerConfig object containing the server configuration.
      *               This object contains the host name, port number, and access token.
      */
-    public static void save(SerConfig config) {
+    public static void save(ServerConfig config) {
         Properties properties = new Properties();
         properties.setProperty("host", config.host());
         properties.setProperty("port", String.valueOf(config.port()));
         String token = config.token() == null ? "" : config.token();
         properties.setProperty("token", token);
-        try (OutputStream output = Files.newOutputStream(CONFIG_FILE)) {
-            properties.store(output, "Chat Server Configuration");
-        } catch (IOException e) {
-            System.err.println("Failed to save configuration: " + e.getMessage());
+        try (OutputStream outputStream = Files.newOutputStream(CONFIG_FILE)) {
+            properties.store(outputStream, "Chat Server Configuration");
+        } catch (IOException error) {
+            System.err.println("Failed to save configuration: " + error.getMessage());
         }
     }
 
@@ -161,39 +161,39 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
      * Prompts the user for missing values.
      * This method is called if the user does not provide a host, port, or token as
      * command-line arguments.
-     * It prompts the user for the missing values and returns a new SerConfig object
+     * It prompts the user for the missing values and returns a new ServerConfig object
      * with the provided values.
      *
-     * @param in The SerConfig object containing the default values.
+     * @param serverConfig The ServerConfig object containing the default values.
      *           This object is used to check if the user has provided values for
      *           host, port, and token.
-     * @return A new SerConfig object with the provided or default values.
+     * @return A new ServerConfig object with the provided or default values.
      *         The object contains the host name, port number, and access token.
      */
-    public static SerConfig argumentPrompt(SerConfig input, Scanner console) {
-        String host = input.host();
-        int port = input.port();
-        String token = input.token();
+    public static ServerConfig argumentPrompt(ServerConfig serverConfig, Scanner scanner) {
+        String host = serverConfig.host();
+        int port = serverConfig.port();
+        String token = serverConfig.token();
 
         // Check if the user has specified a host.
-        if (!input.hostGiven) {
+        if (!serverConfig.hostGiven) {
             System.out.print("Bind address [" + host + "]: ");
-            String line = console.hasNextLine()
-                    ? console.nextLine().trim()
+            String line = scanner.hasNextLine()
+                    ? scanner.nextLine().trim()
                     : "";
             host = line.isEmpty() ? "localhost" : line;
         }
 
         // Check if the user has specified a port number.
-        if (!input.portGiven) {
+        if (!serverConfig.portGiven) {
             System.out.printf("Port [%d]: ", port);
-            String line = console.hasNextLine()
-                    ? console.nextLine().trim()
+            String line = scanner.hasNextLine()
+                    ? scanner.nextLine().trim()
                     : "";
             if (!line.isEmpty()) {
                 try {
                     port = Integer.parseInt(line);
-                } catch (NumberFormatException e) {
+                } catch (NumberFormatException error) {
                     System.out.println("Invalid port number. Using default port " + DEFAULT_PORT);
                 }
             }
@@ -202,12 +202,12 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
         // Check if the expectedToken has not been set (null).
         if (token == null) {
             System.out.print("Access token (or press Enter for none): ");
-            String line = console.hasNextLine()
-                    ? console.nextLine().trim()
+            String line = scanner.hasNextLine()
+                    ? scanner.nextLine().trim()
                     : "";
             token = line.isEmpty() ? null : line;
         }
-        return new SerConfig(host, port, token, true, true);
+        return new ServerConfig(host, port, token, true, true);
     }
 
     /**
@@ -223,8 +223,8 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
             System.out.println("Shutdown requested - closing server socket.");
             try {
                 tcp.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (IOException error) {
+                error.printStackTrace();
             }
             ChatServerHub.append("[" + ChatServerHub.getCurrentTime() + "] SERVER_STOP");
         }, "ChatServerShutdownHook");
@@ -250,7 +250,7 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
      * It is used to provide a simple HTTP interface to check the server status and
      * connected users.
      *
-     * @param cfg The SerConfig object containing the server configuration.
+     * @param cfg The ServerConfig object containing the server configuration.
      *            This object contains the host name, port number, and access token.
      * @return A new ChatServerHub instance.
      *         The ChatServerHub is responsible for managing connected clients and
@@ -259,10 +259,10 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
      *                     This may happen if the server cannot bind to the
      *                     specified port.
      */
-    public static ChatServerHub startAncillaryServer(SerConfig cfg) throws IOException, DeploymentException {
+    public static ChatServerHub startAncillaryServer(ServerConfig config) throws IOException, DeploymentException {
         ChatServerHub hub = new ChatServerHub();
-        hub.setToken(cfg.token());
-        ChatHttpServer.start(hub, cfg);
+        hub.setToken(config.token());
+        ChatHttpServer.start(hub, config);
         // Start the WebSocket server.
         // The WebSocket server is used to provide real-time updates to connected
         // clients.
@@ -274,17 +274,17 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
         try {
             wsServer.start();
             System.out.println("WebSocket server started at ws://localhost:8081/wschat");
-        } catch (DeploymentException e) {
-            e.printStackTrace();
-            throw e;
+        } catch (DeploymentException error) {
+            error.printStackTrace();
+            throw error;
         }
 
         // Append the server start message to the log.
         // This message indicates that the server has started successfully and is
         // listening for connections.
         ChatServerHub.append("[" + ChatServerHub.getCurrentTime() + "] SERVER_START  "
-                + cfg.host() + ':' + cfg.port()
-                + "  token=" + (cfg.token() == null || cfg.token().isBlank() ? "<none>" : "<set>"));
+                + config.host() + ':' + config.port()
+                + "  token=" + (config.token() == null || config.token().isBlank() ? "<none>" : "<set>"));
         return hub;
     }
 
@@ -294,7 +294,7 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
      * It creates a new thread for each client connection and handles authentication
      * and duplicate name checks.
      *
-     * @param cfg The SerConfig object containing the server configuration.
+     * @param cfg The ServerConfig object containing the server configuration.
      *            This object contains the host name, port number, and access token.
      * @param hub The ChatServerHub instance managing connected clients.
      *            The ChatServerHub is responsible for broadcasting messages to all
@@ -305,7 +305,7 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
      *                     This may happen if the server socket is closed or an I/O
      *                     error occurs.
      */
-    public static void acceptLoop(SerConfig cfg,
+    public static void acceptLoop(ServerConfig config,
             ChatServerHub hub,
             ChatServer tcp) throws IOException {
         while (true) {
@@ -319,21 +319,21 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
                 // and broadcasting them to other connected clients.
                 new Thread(new ClientHandler(sslSocket, hub)).start();
 
-            } catch (SSLException e) {
-                String message = e.getMessage();
+            } catch (SSLException error) {
+                String message = error.getMessage();
                 if (message != null && message.contains("Remote host terminated the handshake")) {
                     continue;
                 }
-                System.err.println("SSL error: " + e.getMessage());
-            } catch (SocketException e) {
-                String message = e.getMessage();
+                System.err.println("SSL error: " + error.getMessage());
+            } catch (SocketException error) {
+                String message = error.getMessage();
                 if (message != null && message.contains("Socket closed")) {
                     // If the socket is closed, we can ignore this error.
                     continue;
                 }
-                System.err.println("Socket error: " + e.getMessage());
-            } catch (IOException e) {
-                System.err.println("I/O error: " + e.getMessage());
+                System.err.println("Socket error: " + error.getMessage());
+            } catch (IOException error) {
+                System.err.println("I/O error: " + error.getMessage());
             }
         }
     }
@@ -343,24 +343,24 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
      * This method is called when an error occurs during authentication or duplicate
      * name checks.
      *
-     * @param s   The socket representing the connection to the client.
-     *            This socket is used to send the error message and close the
-     *            connection.
-     * @param msg The error message to send to the client.
-     *            This message is sent in JSON format and indicates the reason for
-     *            the error.
+     * @param socket  The socket representing the connection to the client.
+     *                  This socket is used to send the error message and close the
+     *                  connection.
+     * @param message The error message to send to the client.
+     *                  This message is sent in JSON format and indicates the reason for
+     *                  the error.
      */
-    public static void sendErrorAndClose(Socket s, String msg) {
-        try (PrintWriter pw = new PrintWriter(
-                new OutputStreamWriter(s.getOutputStream(), StandardCharsets.UTF_8), true)) {
-            pw.println(ChatMessage.error(msg).toJson());
-        } catch (IOException e) {
-            e.printStackTrace();
+    public static void sendErrorAndClose(Socket socket, String message) {
+        try (PrintWriter printWriter = new PrintWriter(
+                new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true)) {
+            printWriter.println(ChatMessage.error(message).toJson());
+        } catch (IOException error) {
+            error.printStackTrace();
         }
         try {
-            s.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+            socket.close();
+        } catch (IOException error) {
+            error.printStackTrace();
         }
     }
 }

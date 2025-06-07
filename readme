@@ -34,6 +34,7 @@ The project is organized into three main Maven modules:
 *   Java Development Kit (JDK) 11 or higher.
 *   Apache Maven.
 *   Modern web browser (for the web client).
+*   (Optional) DBBrowser or SQLite client for inspecting the database.
 
 ## Building the Application
 
@@ -137,6 +138,16 @@ The project is organized into three main Maven modules:
 
 *   **PowerShell Script**: A PowerShell script (`start-server.ps1`) is provided to restart the server via web.
         You can run it in a PowerShell terminal to start the server.
+
+## Libraries Used
+*   **Gson**: For JSON serialization and deserialization.
+*   **BCrypt**: For secure password hashing.
+*   **Lanterna**: For the TUI client interface.
+*   **Jakarta WebSocket API**: For WebSocket communication.
+*   **Grizzly HTTP Server**: For serving the web interface and handling HTTP requests.
+*   **SQLite JDBC Driver**: For database connectivity.
+*   **Tyrus**: For WebSocket server implementation.
+*   **JUnit**: For unit testing the application.
 
 ## Program File Layout
 
