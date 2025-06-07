@@ -10,6 +10,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.Scanner;
+import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSocket;
 
 /**
@@ -306,14 +308,38 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
             ChatServerHub hub,
             ChatServer tcp) throws IOException {
         while (true) {
-            SSLSocket sslSocket = (SSLSocket) tcp.awaitConnection();
-            sslSocket.setUseClientMode(false);
-            sslSocket.startHandshake();
+            try {
+                SSLSocket sslSocket = (SSLSocket) tcp.awaitConnection();
+                if (!(sslSocket instanceof SSLSocket)) {
+                    System.err.println("Expected SSLSocket, but got: " + sslSocket.getClass().getName());
+                    sslSocket.close();
+                    continue;
+                }
+                sslSocket = (SSLSocket) sslSocket;
+                sslSocket.setUseClientMode(false);
+                sslSocket.startHandshake();
 
-            // Create a new ClientHandler thread to handle the client connection.
-            // The ClientHandler is responsible for processing messages from the client
-            // and broadcasting them to other connected clients.
-            new Thread(new ClientHandler(sslSocket, hub)).start();
+                // Create a new ClientHandler thread to handle the client connection.
+                // The ClientHandler is responsible for processing messages from the client
+                // and broadcasting them to other connected clients.
+                new Thread(new ClientHandler(sslSocket, hub)).start();
+
+            } catch (SSLException e) {
+                String message = e.getMessage();
+                if (message != null && message.contains("Remote host terminated the handshake")) {
+                    continue;
+                }
+                System.err.println("SSL error: " + e.getMessage());
+            } catch (SocketException e) {
+                String message = e.getMessage();
+                if (message != null && message.contains("Socket closed")) {
+                    // If the socket is closed, we can ignore this error.
+                    continue;
+                }
+                System.err.println("Socket error: " + e.getMessage());
+            } catch (IOException e) {
+                System.err.println("I/O error: " + e.getMessage());
+            }
         }
     }
 

@@ -167,17 +167,26 @@ public record CliConfig(String host, int port, String user, String token) {
                 while ((line = input.readLine()) != null) {
                     ChatMessage message = ChatMessage.fromJson(line);
 
+                    // If the message type is "server-shutdown", print a message and exit the application.
+                    if (ChatMessage.SERVER_SHUTDOWN.equals(message.getType())) {
+                        System.out.println("Server is shutting down. Exiting...");
+                        System.exit(0);
+                        return;
+                    }
+
                     // If the user is kicked, print the message body and exit the application.
                     // This is used to notify the user that they have been kicked from the chat.
                     if (message.isKick()) {
                         System.out.println(message.getBody());
-                        System.exit(0);
+                        socket.close();
+                        return;
                     }
 
                     // Exit application if authentication fails.
                     if ("error".equals(message.getType())) {
                         System.err.println("Server refused connection: " + message.getBody());
-                        System.exit(1);
+                        socket.close();
+                        return;
                     }
 
                     // If the message is a roster update, print the list of connected users.
@@ -201,6 +210,7 @@ public record CliConfig(String host, int port, String user, String token) {
                         }
                     }
                 }
+                socket.close();
             } catch (IOException e) {
                 if (!socket.isClosed()) {
                     System.err.println("Error reading from server: " + e.getMessage());

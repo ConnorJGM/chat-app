@@ -97,6 +97,7 @@ public final class ChatClientApp {
                 // If the user enters "exit", notify the server and break the loop.
                 // This allows the user to leave the chat gracefully.
                 if ("quit".equalsIgnoreCase(text.trim())) {
+                    socket.close();
                     break;
                 }
 

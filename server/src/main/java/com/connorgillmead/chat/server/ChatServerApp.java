@@ -116,6 +116,7 @@ public final class ChatServerApp {
                     final int kickLength = 5;
                     String line = console.nextLine().trim();
                     if (line.toLowerCase().startsWith("quit")) {
+                        hub.serverShutdown(line);
                         System.exit(0);
                     } else if (line.startsWith("kick ")) {
                         String user = line.substring(kickLength).trim();
@@ -131,8 +132,6 @@ public final class ChatServerApp {
 
             SerConfig.acceptLoop(cfg, hub, tcp);
 
-            // Wait for user input to terminate the server.
-            System.in.read();
         } catch (DeploymentException | IOException e) {
             System.err.println("Connection aborted.");
         }

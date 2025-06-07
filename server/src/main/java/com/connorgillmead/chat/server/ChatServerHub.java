@@ -3,13 +3,12 @@
 package com.connorgillmead.chat.server;
 
 import com.connorgillmead.chat.common.ChatMessage;
+import com.connorgillmead.chat.server.database.MessageDBHandler;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -30,9 +29,6 @@ final class ChatServerHub {
 
     // Intialises "HISTORY_SIZE" variable and set it to 100 lines.
     private static final int HISTORY_SIZE = 100;
-
-    // Creates double-ended queue to add and remove messages.
-    private final Deque<ChatMessage> history = new ArrayDeque<>(HISTORY_SIZE);
 
     // Creates a thread-safe set to store connected clients.
     // This set allows concurrent access from multiple threads.
@@ -144,11 +140,6 @@ final class ChatServerHub {
      * @param msg The message to broadcast.
      */
     void broadcast(ChatMessage msg) {
-        if (history.size() == HISTORY_SIZE) {
-            history.removeFirst();
-        }
-        history.addLast(msg);
-
         // Append the message to the log file if not "roster".
         if (!"roster".equals(msg.getType())) {
             append(msg.toJson());
@@ -165,14 +156,68 @@ final class ChatServerHub {
     }
 
     /**
+     * Shuts down the server and disconnects all clients.
+     * This method is called when the server is shutting down.
+     * It sends a shutdown message to all connected clients and disconnects them.
+     *
+     * @param reason The reason for the server shutdown.
+     *               This method logs the shutdown reason and sends it to all clients.
+     */
+    public void serverShutdown(String reason) {
+        ChatMessage shutdownMessage = ChatMessage.serverShutdown(reason);
+        System.out.println("Broadcasting server shutdown: " + reason);
+        append(String.format("[%s] SERVER_SHUTDOWN %s", Instant.now(), reason));
+
+        List<ClientHandler> clientListCopy = List.copyOf(clients);
+
+        for (ClientHandler client : clientListCopy) {
+            System.out.println("Server: Shutting down message to: " + client.getUsername());
+            client.send(shutdownMessage);
+        }
+
+        try {
+            final int shutdownDelay = 200;
+            Thread.sleep(shutdownDelay);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Server shutdown interrupted: " + e.getMessage());
+        }
+
+        System.out.println("Disconnecting all clients.");
+        for (ClientHandler client : clientListCopy) {
+            if (client instanceof WebHandler web) {
+                web.close();
+            } else {
+                client.disconnect();
+            }
+        }
+    }
+
+    /**
      * Returns the chat history.
      * This method returns a copy of the chat history, which is a list of messages.
      * The history is limited to the last 100 messages.
      *
      * @return A list of chat messages representing the chat history.
      */
-    List<ChatMessage> getHistory() {
-        return List.copyOf(history);
+    public List<ChatMessage> getHistory() {
+        return MessageDBHandler.getMessages(HISTORY_SIZE);
+    }
+
+    /**
+     * Sends the chat history to a specific client.
+     * This method is called to send the chat history to a client when they connect
+     * or request it.
+     *
+     * @param client The client handler to send the history to.
+     *               This method iterates through the chat history and sends each
+     *               message to the specified client.
+     */
+    public void sendHistory(ClientHandler client) {
+        List<ChatMessage> history = getHistory();
+        for (ChatMessage historicalMessages : history) {
+            client.send(historicalMessages);
+        }
     }
 
     // Returns the number of connected users.

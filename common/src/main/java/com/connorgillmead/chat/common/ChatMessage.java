@@ -15,8 +15,11 @@ import java.util.List;
  * The message type is used to distinguish between different types of messages (e.g., text, image).
  */
 public final class ChatMessage {
+    /**
+     * This message type is used to notify users that the server is shutting down.
+     */
+    public static final String SERVER_SHUTDOWN = "server_shutdown";
     private static final Gson GSON = new Gson();
-
     private String type;
     private String user;
     private String body;
@@ -229,6 +232,40 @@ public final class ChatMessage {
         m.user = user;
         m.success = success;
         m.message = responseMessage;
+        m.time = System.currentTimeMillis();
+        return m;
+    }
+
+    /**
+     * Creates a new ChatMessage object for message history.
+     * This message type is used to send a message from the chat history.
+     *
+     * @param user The user who sent the message.
+     * @param body The body of the message.
+     * @param time The timestamp of when the message was sent.
+     * @return A new ChatMessage object with the specified user, body, and time.
+     */
+    public static ChatMessage messageHistory(String user, String body, long time) {
+        ChatMessage m = new ChatMessage();
+        m.type = "text";
+        m.user = user;
+        m.body = body;
+        m.time = time;
+        return m;
+    }
+
+    /**
+     * Creates a new ChatMessage object for server shutdown.
+     * This message type is used to notify users that the server is shutting down.
+     *
+     * @param reason The reason for the server shutdown.
+     * @return A new ChatMessage object with the specified reason for shutdown.
+     */
+    public static ChatMessage serverShutdown(String reason) {
+        ChatMessage m = new ChatMessage();
+        m.type = SERVER_SHUTDOWN;
+        m.user = "Server";
+        m.body = reason;
         m.time = System.currentTimeMillis();
         return m;
     }

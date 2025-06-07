@@ -74,7 +74,6 @@ public final class ChatClientTuiApp {
             runLanternaClient();
         } catch (IOException | GeneralSecurityException e) {
             e.printStackTrace();
-            System.exit(1);
         }
     }
 
@@ -408,7 +407,7 @@ public final class ChatClientTuiApp {
                                Socket socket,
                                Screen screen) {
         try {
-            if (socket != null) {
+            if (socket != null && !socket.isClosed()) {
                 socket.close();
             }
         } catch (IOException e) {
@@ -421,9 +420,9 @@ public final class ChatClientTuiApp {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        new Thread(() -> {
-            System.exit(0);
-        }).start();
+        gui.getGUIThread().invokeLater(() -> {
+            gui.getActiveWindow().close();
+        });
     }
 
     /**
@@ -495,6 +494,20 @@ public final class ChatClientTuiApp {
 
         // Define a delay for error messages.
         final int delay = 5000;
+
+        // If the server is shutting down, show a dialog and quit.
+        if (ChatMessage.SERVER_SHUTDOWN.equals(m.getType())) {
+            ctx.gui.getGUIThread().invokeLater(() -> {
+                new MessageDialogBuilder()
+                    .setTitle("Server Shutdown")
+                    .setText("The server is shutting down. Exiting...")
+                    .addButton(MessageDialogButton.OK)
+                    .build()
+                    .showDialog(ctx.gui);
+                doQuit(ctx.gui(), ctx.socket(), ctx.screen());
+            });
+            return true;
+        }
 
         // If the user is kicked, show a dialog and quit.
         // This is done to notify the user that they have been kicked from the chat.

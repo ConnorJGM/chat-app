@@ -7,6 +7,7 @@ import com.connorgillmead.chat.server.database.Database;
 import com.connorgillmead.chat.server.database.MessageDBHandler;
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
 import org.mindrot.jbcrypt.BCrypt;
 
 /**
@@ -187,6 +188,8 @@ public class ClientHandler implements Runnable {
 
             handleClientMessages(in);
 
+        } catch (SocketException e) {
+            System.out.println("Client disconnected: " + socket.getRemoteSocketAddress());
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
