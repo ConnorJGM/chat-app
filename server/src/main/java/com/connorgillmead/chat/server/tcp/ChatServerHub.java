@@ -13,6 +13,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,6 +31,15 @@ public final class ChatServerHub {
      * change.
      */
     private static final Path LOG = Path.of("chat.log");
+
+    /**
+     * The date-time formatter used for formatting log timestamps.
+     * This formatter is used to format the timestamps of log messages in a
+     * consistent way.
+     */
+    private static final DateTimeFormatter LOG_TIME_FORMAT = DateTimeFormatter
+            .ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
+            .withZone(ZoneId.systemDefault());
 
     // Intialises "HISTORY_SIZE" variable and set it to 100 lines.
     private static final int HISTORY_SIZE = 100;
@@ -62,7 +73,7 @@ public final class ChatServerHub {
     public void addClient(ClientHandler c) {
         clients.add(c);
         append(String.format("[%s] JOIN %s",
-                Instant.now(), c.getUsername()));
+                getCurrentTime(), c.getUsername()));
         broadcast(ChatMessage.userList(getUsernames()));
     }
 
@@ -76,7 +87,7 @@ public final class ChatServerHub {
     public void removeClient(ClientHandler c) {
         clients.remove(c);
         append(String.format("[%s] LEAVE %s",
-                Instant.now(), c.getUsername()));
+                getCurrentTime(), c.getUsername()));
         broadcast(ChatMessage.userList(getUsernames()));
     }
 
@@ -145,7 +156,7 @@ public final class ChatServerHub {
     public void broadcast(ChatMessage msg) {
         // Append the message to the log file if not "roster".
         if (!"roster".equals(msg.getType())) {
-            append(msg.toLogJson());
+            append("[" + getCurrentTime() + "]" + msg.toLogJson());
         }
 
         // Send to all TCP clients.
@@ -159,6 +170,17 @@ public final class ChatServerHub {
     }
 
     /**
+     * Gets the current time formatted for logging.
+     * This method returns the current time as a string formatted according to the
+     * LOG_TIME_FORMAT.
+     *
+     * @return The current time as a formatted string.
+     */
+    public static String getCurrentTime() {
+        return LOG_TIME_FORMAT.format(Instant.now());
+    }
+
+    /**
      * Shuts down the server and disconnects all clients.
      * This method is called when the server is shutting down.
      * It sends a shutdown message to all connected clients and disconnects them.
@@ -169,7 +191,7 @@ public final class ChatServerHub {
     public void serverShutdown(String reason) {
         ChatMessage shutdownMessage = ChatMessage.serverShutdown(reason);
         System.out.println("Broadcasting server shutdown: " + reason);
-        append(String.format("[%s] SERVER_SHUTDOWN %s", Instant.now(), reason));
+        append(String.format("[%s] SERVER_SHUTDOWN %s", getCurrentTime(), reason));
 
         List<ClientHandler> clientListCopy = List.copyOf(clients);
 

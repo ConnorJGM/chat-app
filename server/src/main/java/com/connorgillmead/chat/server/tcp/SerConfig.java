@@ -16,7 +16,6 @@ import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -227,7 +226,7 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            ChatServerHub.append("[" + Instant.now() + "] SERVER_STOP");
+            ChatServerHub.append("[" + ChatServerHub.getCurrentTime() + "] SERVER_STOP");
         }, "ChatServerShutdownHook");
         Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
@@ -283,7 +282,7 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
         // Append the server start message to the log.
         // This message indicates that the server has started successfully and is
         // listening for connections.
-        ChatServerHub.append("[" + Instant.now() + "] SERVER_START  "
+        ChatServerHub.append("[" + ChatServerHub.getCurrentTime() + "] SERVER_START  "
                 + cfg.host() + ':' + cfg.port()
                 + "  token=" + (cfg.token() == null || cfg.token().isBlank() ? "<none>" : "<set>"));
         return hub;
