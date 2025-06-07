@@ -4,6 +4,7 @@ package com.connorgillmead.chat.server;
 
 import com.connorgillmead.chat.common.ChatMessage;
 import com.connorgillmead.chat.server.database.Database;
+import com.connorgillmead.chat.server.database.MessageDBHandler;
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnError;
 import jakarta.websocket.OnMessage;
@@ -121,6 +122,7 @@ public class WebSocketChatEndpoint {
                 return;
             }
             if ("text".equals(msg.getType())) {
+                MessageDBHandler.addMessage(handler.getUsername(), msg.getBody());
                 ChatMessage stamped = ChatMessage.of(handler.getUsername(), msg.getBody());
                 hub.broadcast(stamped);
             } else {

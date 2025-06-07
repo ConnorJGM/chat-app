@@ -4,6 +4,7 @@ package com.connorgillmead.chat.server;
 
 import com.connorgillmead.chat.common.ChatMessage;
 import com.connorgillmead.chat.server.database.Database;
+import com.connorgillmead.chat.server.database.MessageDBHandler;
 import java.io.*;
 import java.net.Socket;
 import org.mindrot.jbcrypt.BCrypt;
@@ -366,6 +367,7 @@ public class ClientHandler implements Runnable {
                     if (CommandHelper.command(message, hub, this)) {
                         continue;
                     }
+                    MessageDBHandler.addMessage(this.username, message.getBody());
                     ChatMessage text = ChatMessage.of(this.username, message.getBody());
                     hub.broadcast(text);
                     continue;
