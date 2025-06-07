@@ -25,13 +25,13 @@ public final class ChatMessage {
     private static final Gson GSON = new Gson();
 
     // Gson instance for logging purposes.
-    // This instance excludes the "success" and "token" fields from the JSON output.
+    // This instance excludes the "success" field from the JSON output.
     private static final Gson GSON_FOR_LOG = new GsonBuilder()
             .addSerializationExclusionStrategy(new ExclusionStrategy() {
                 @Override
                 public boolean shouldSkipField(FieldAttributes fieldAttributes) {
-                    // Skip the token field for logging purposes.
-                    return fieldAttributes.getName().equals("success");
+                    return fieldAttributes.getName().equals("success")
+                        || fieldAttributes.getName().equals("password");
                 }
 
                 @Override
@@ -72,7 +72,7 @@ public final class ChatMessage {
     }
 
     public List<String> getUserList() {
-        return (List<String>) users;
+        return users;
     }
 
     public String getPassword() {

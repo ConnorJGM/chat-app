@@ -177,6 +177,7 @@ public final class ChatServerHub {
             System.out.println("Server: Shutting down message to: " + client.getUsername());
             client.send(shutdownMessage);
         }
+        WebSocketChatEndpoint.sendToAll(shutdownMessage);
 
         try {
             final int shutdownDelay = 200;

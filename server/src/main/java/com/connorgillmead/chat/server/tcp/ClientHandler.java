@@ -133,7 +133,7 @@ public class ClientHandler implements Runnable {
                                 "Username already exists. Please try logging in or use a different username."));
                     } else {
                         if (Database.addUser(requestUsername, requestPassword)) {
-                            processSuccessfulRegistrationAndReserveName(requestUsername);
+                            processSuccessful(requestUsername);
                         } else {
                             send(ChatMessage.authorisedResponse("register_response", requestUsername, false,
                                     "Failed to register user. "
@@ -286,7 +286,7 @@ public class ClientHandler implements Runnable {
      * @param requestUsername The username that was successfully registered in the
      *                        database.
      */
-    private void processSuccessfulRegistrationAndReserveName(String requestUsername) {
+    private void processSuccessful(String requestUsername) {
         System.err.println("SERVER: User " + requestUsername + " added to DB. Attempting to reserve name.");
         if (!hub.reserveName(requestUsername)) {
             System.err.println(
@@ -337,7 +337,7 @@ public class ClientHandler implements Runnable {
                                 "Username already exists. Please try logging in or use a different username."));
                     } else {
                         if (Database.addUser(message.getUser(), message.getPassword())) {
-                            processSuccessfulRegistrationAndReserveName(message.getUser());
+                            processSuccessful(message.getUser());
                         } else {
                             send(ChatMessage.authorisedResponse("register_response", message.getUser(), false,
                                     "Failed to register user. "

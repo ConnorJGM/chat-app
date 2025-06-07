@@ -153,6 +153,16 @@
                 if (ws) ws.close();
                 break;
             }
+            case "server_shutdown": {
+                const log = document.getElementById("chatLog");
+                const div = document.createElement("div");
+                div.textContent = "The server is shutting down. Please refresh the page.";
+                div.className = "text-danger fw-bold";
+                log.appendChild(div);
+                kicked = true;
+                if (ws) ws.close();
+                break;
+            }
         }
     };
 

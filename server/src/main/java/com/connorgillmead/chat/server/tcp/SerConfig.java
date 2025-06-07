@@ -312,12 +312,6 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
         while (true) {
             try {
                 SSLSocket sslSocket = (SSLSocket) tcp.awaitConnection();
-                if (!(sslSocket instanceof SSLSocket)) {
-                    System.err.println("Expected SSLSocket, but got: " + sslSocket.getClass().getName());
-                    sslSocket.close();
-                    continue;
-                }
-                sslSocket = (SSLSocket) sslSocket;
                 sslSocket.setUseClientMode(false);
                 sslSocket.startHandshake();
 
