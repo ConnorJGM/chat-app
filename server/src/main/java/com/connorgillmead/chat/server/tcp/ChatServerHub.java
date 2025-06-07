@@ -145,7 +145,7 @@ public final class ChatServerHub {
     public void broadcast(ChatMessage msg) {
         // Append the message to the log file if not "roster".
         if (!"roster".equals(msg.getType())) {
-            append(msg.toJson());
+            append(msg.toLogJson());
         }
 
         // Send to all TCP clients.

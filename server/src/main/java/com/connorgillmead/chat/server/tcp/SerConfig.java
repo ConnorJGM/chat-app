@@ -285,7 +285,7 @@ public record SerConfig(String host, int port, String token, boolean hostGiven, 
         // listening for connections.
         ChatServerHub.append("[" + Instant.now() + "] SERVER_START  "
                 + cfg.host() + ':' + cfg.port()
-                + "  token=" + (cfg.token() == null ? "<none>" : cfg.token()));
+                + "  token=" + (cfg.token() == null || cfg.token().isBlank() ? "<none>" : "<set>"));
         return hub;
     }
 

@@ -5,7 +5,10 @@ package com.connorgillmead.chat.common;
 // Gson library for JSON serialisation/deserialisation.
 // This library is used to convert Java objects to JSON format and vice versa.
 // It is a popular library for working with JSON in Java applications.
+import com.google.gson.ExclusionStrategy;
+import com.google.gson.FieldAttributes;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import java.util.List;
 
 /**
@@ -20,6 +23,23 @@ public final class ChatMessage {
      */
     public static final String SERVER_SHUTDOWN = "server_shutdown";
     private static final Gson GSON = new Gson();
+
+    // Gson instance for logging purposes.
+    // This instance excludes the "success" and "token" fields from the JSON output.
+    private static final Gson GSON_FOR_LOG = new GsonBuilder()
+            .addSerializationExclusionStrategy(new ExclusionStrategy() {
+                @Override
+                public boolean shouldSkipField(FieldAttributes fieldAttributes) {
+                    // Skip the token field for logging purposes.
+                    return fieldAttributes.getName().equals("success");
+                }
+
+                @Override
+                public boolean shouldSkipClass(Class<?> clazz) {
+                    return false;
+                }
+            }).create();
+
     private String type;
     private String user;
     private String body;
@@ -274,6 +294,12 @@ public final class ChatMessage {
     /// This method uses the Gson library to serialize the object to JSON format.
     public String toJson() {
         return GSON.toJson(this);
+    }
+
+    /// Converts the ChatMessage object to a JSON string for logging.
+    /// This method uses a custom Gson instance that excludes certain fields from the JSON output.
+    public String toLogJson() {
+        return GSON_FOR_LOG.toJson(this);
     }
 
     /// Converts a JSON string to a ChatMessage object.
