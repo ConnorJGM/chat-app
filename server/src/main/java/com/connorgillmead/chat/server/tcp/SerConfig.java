@@ -1,8 +1,10 @@
 // SerConfig.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.tcp;
 
 import com.connorgillmead.chat.common.ChatMessage;
+import com.connorgillmead.chat.server.http.ChatHttpServer;
+import com.connorgillmead.chat.server.websocket.WebSocketChatEndpoint;
 import jakarta.websocket.DeploymentException;
 import java.io.IOException;
 import java.io.InputStream;

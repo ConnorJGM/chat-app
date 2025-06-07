@@ -1,7 +1,7 @@
 package com.connorgillmead.chat;
 
 import com.connorgillmead.chat.common.ChatMessage;
-import com.connorgillmead.chat.server.ChatServer;
+import com.connorgillmead.chat.server.tcp.ChatServer;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

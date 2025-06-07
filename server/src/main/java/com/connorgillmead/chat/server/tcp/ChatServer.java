@@ -1,6 +1,6 @@
 // ChatServer.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.tcp;
 
 import java.io.IOException;
 import java.io.InputStream;

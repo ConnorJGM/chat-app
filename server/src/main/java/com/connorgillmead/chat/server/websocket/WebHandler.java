@@ -1,8 +1,10 @@
 // WebHandler.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.websocket;
 
 import com.connorgillmead.chat.common.ChatMessage;
+import com.connorgillmead.chat.server.tcp.ChatServerHub;
+import com.connorgillmead.chat.server.tcp.ClientHandler;
 import jakarta.websocket.Session;
 import java.io.Closeable;
 import java.io.IOException;

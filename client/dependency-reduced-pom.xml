@@ -13,14 +13,32 @@
         <artifactId>maven-shade-plugin</artifactId>
         <executions>
           <execution>
+            <id>shade-cli</id>
             <phase>package</phase>
             <goals>
               <goal>shade</goal>
             </goals>
             <configuration>
+              <finalName>${project.artifactId}-cli</finalName>
               <transformers>
                 <transformer>
-                  <mainClass>com.connorgillmead.chat.client.ChatClientApp</mainClass>
+                  <mainClass>com.connorgillmead.chat.client.cli.ChatClientApp</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+          <execution>
+            <id>shade-tui</id>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <finalName>${project.artifactId}-tui</finalName>
+              <classifier>tui</classifier>
+              <transformers>
+                <transformer>
+                  <mainClass>com.connorgillmead.chat.client.tui.ChatClientTuiApp</mainClass>
                 </transformer>
               </transformers>
             </configuration>

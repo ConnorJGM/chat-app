@@ -1,11 +1,15 @@
 // ClientHandler.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.tcp;
 
 import com.connorgillmead.chat.common.ChatMessage;
 import com.connorgillmead.chat.server.database.Database;
 import com.connorgillmead.chat.server.database.MessageDBHandler;
-import java.io.*;
+import com.connorgillmead.chat.server.utilities.CommandHelper;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.SocketException;
 import org.mindrot.jbcrypt.BCrypt;
@@ -32,7 +36,7 @@ public class ClientHandler implements Runnable {
      * @param socket The socket representing the connection to the client.
      * @param hub    The ChatServerHub instance managing all clients.
      */
-    ClientHandler(Socket socket, ChatServerHub hub) {
+    public ClientHandler(Socket socket, ChatServerHub hub) {
         this.socket = socket;
         this.hub = hub;
     }
@@ -53,7 +57,7 @@ public class ClientHandler implements Runnable {
      *
      * @return The username of the client.
      */
-    String getUsername() {
+    public String getUsername() {
         return username;
     }
 
@@ -189,7 +193,7 @@ public class ClientHandler implements Runnable {
             handleClientMessages(in);
 
         } catch (SocketException e) {
-            System.out.println("Client disconnected: " + socket.getRemoteSocketAddress());
+            System.out.println(getUsername() + " disconnected from: " + socket.getRemoteSocketAddress());
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -214,7 +218,7 @@ public class ClientHandler implements Runnable {
      *
      * @param msg The message to send to the client.
      */
-    void send(ChatMessage msg) {
+    public void send(ChatMessage msg) {
         if (out != null) {
             out.println(msg.toJson());
         }

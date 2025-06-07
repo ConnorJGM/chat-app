@@ -1,6 +1,6 @@
 // AuthenticationHandler.java
 
-package com.connorgillmead.chat.client;
+package com.connorgillmead.chat.client.cli;
 
 import com.connorgillmead.chat.common.ChatMessage;
 import java.io.BufferedReader;

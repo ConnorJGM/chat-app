@@ -1,6 +1,6 @@
 // Poll.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.utilities;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

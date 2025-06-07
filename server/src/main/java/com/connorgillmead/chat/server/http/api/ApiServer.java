@@ -1,8 +1,14 @@
 // ApiServer.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.http.api;
 
 import com.connorgillmead.chat.common.ChatMessage;
+import com.connorgillmead.chat.server.http.ChatHttpServer;
+import com.connorgillmead.chat.server.http.HttpConfig;
+import com.connorgillmead.chat.server.tcp.ChatServerHub;
+import com.connorgillmead.chat.server.tcp.SerConfig;
+import com.connorgillmead.chat.server.websocket.WebHandler;
+import com.connorgillmead.chat.server.websocket.WebSocketChatEndpoint;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -22,7 +28,7 @@ import org.glassfish.grizzly.http.server.Response;
  * users.
  * This class is not meant to be instantiated.
  */
-final class ApiServer {
+public final class ApiServer {
     // Restart signal constant used to indicate a server restart.
     private static final int RESTART_SIGNAL = 5;
 
@@ -39,7 +45,7 @@ final class ApiServer {
      *                    functionality.
      * @param startMillis The start time of the server in milliseconds.
      */
-    static void register(HttpServer server,
+    public static void register(HttpServer server,
                          ChatServerHub hub,
                          SerConfig cfg,
                          long startMillis,
@@ -171,7 +177,7 @@ final class ApiServer {
                         .ifPresent(s -> {
                             WebHandler webHandler = WebSocketChatEndpoint.getHandlerMap().get(s);
                             webHandler.send(ChatMessage.kick("You have been kicked from the chat server."));
-                            hub.kickClient(user);
+                            hub.kickUser(user);
                             try {
                                 s.close();
                             } catch (IOException e) {
@@ -179,7 +185,7 @@ final class ApiServer {
                             }
                         });
 
-                hub.kickClient(user);
+                hub.kickUser(user);
 
                 response.setContentType("text/plain; charset=utf-8");
                 String kicked = "Kicked: " + user;

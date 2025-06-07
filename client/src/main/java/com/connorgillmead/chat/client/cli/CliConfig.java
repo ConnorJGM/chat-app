@@ -1,11 +1,10 @@
 // CliConfig.java
 
-package com.connorgillmead.chat.client;
+package com.connorgillmead.chat.client.cli;
 
 import com.connorgillmead.chat.common.ChatMessage;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.Socket;
 import java.util.List;
 import java.util.Scanner;
@@ -154,12 +153,11 @@ public record CliConfig(String host, int port, String user, String token) {
     * It runs in a separate thread to allow for concurrent message sending and receiving.
     * The thread will continue to run until the socket is closed or an I/O error occurs.
     */
-    public static void startReader(Socket socket, String user) {
+    public static void startReader(Socket socket, String user, BufferedReader input) {
 
         // Create a new thread to read messages from the server.
         new Thread(() -> {
-            try (BufferedReader input = new BufferedReader(
-                    new InputStreamReader(socket.getInputStream(), "UTF-8"))) {
+            try {
                 String line;
 
                 // Read messages from the server in a loop.
@@ -169,7 +167,7 @@ public record CliConfig(String host, int port, String user, String token) {
 
                     // If the message type is "server-shutdown", print a message and exit the application.
                     if (ChatMessage.SERVER_SHUTDOWN.equals(message.getType())) {
-                        System.out.println("Server is shutting down. Exiting...");
+                        System.out.println("The server is shutting down. Exiting...");
                         System.exit(0);
                         return;
                     }
@@ -178,7 +176,7 @@ public record CliConfig(String host, int port, String user, String token) {
                     // This is used to notify the user that they have been kicked from the chat.
                     if (message.isKick()) {
                         System.out.println(message.getBody());
-                        socket.close();
+                        System.exit(0);
                         return;
                     }
 

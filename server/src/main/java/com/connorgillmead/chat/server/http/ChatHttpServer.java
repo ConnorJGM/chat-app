@@ -1,7 +1,12 @@
 // StatusHttpServer.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.http;
 
+import com.connorgillmead.chat.server.http.api.ApiServer;
+import com.connorgillmead.chat.server.http.ui.WebPageServer;
+import com.connorgillmead.chat.server.tcp.ChatServerHub;
+import com.connorgillmead.chat.server.tcp.SerConfig;
+import com.connorgillmead.chat.server.websocket.WebSocketChatEndpoint;
 import java.io.IOException;
 import org.glassfish.grizzly.http.server.HttpServer;
 
@@ -11,22 +16,39 @@ import org.glassfish.grizzly.http.server.HttpServer;
  * 1. `/` - Displays the uptime and user count.
  * 2. `/users` - Displays a list of connected users in HTML format.
  */
-final class ChatHttpServer {
-    // Constants for HTTP server configuration.
-    // These constants define the port number for the HTTP server and various HTTP
-    // status codes.
-    static final int HTTP_STATUS_BAD_REQUEST = 400;
-    static final int HTTP_METHOD_NOT_ALLOWED = 405;
-    static final int HTTP_FORBIDDEN = 403;
-    static final int HTTP_REDIRECT = 303;
+public final class ChatHttpServer {
+    /**
+     * HTTP status bad request code.
+     * This status code indicates that the server cannot process the request due to
+     * client error (e.g., malformed request syntax).
+     */
+    public static final int HTTP_STATUS_BAD_REQUEST = 400;
+    /**
+     * HTTP forbidden code.
+     * This status code indicates that the server understands the request but refuses
+     * to authorise it.
+     */
+    public static final int HTTP_FORBIDDEN = 403;
+    /**
+     * HTTP redirect code.
+     * This status code indicates that the requested resource has been
+     * temporarily moved to a different URI, and the client should use the new URI
+     * for future requests.
+     */
+    public static final int HTTP_REDIRECT = 303;
+    /**
+     * HTTP method not allowed code.
+     * This status code indicates that the request method is not supported for the
+     * requested resource.
+     */
+    public static final int HTTP_METHOD_NOT_ALLOWED = 405;
     private static final int PORT_HTTP = 8080;
 
     /**
      * Private constructor to prevent instantiation.
      * This class is a utility class and should not be instantiated.
      */
-    private ChatHttpServer() {
-    }
+    private ChatHttpServer() { }
 
     /**
      * Starts the HTTP server with the specified ChatServerHub.
@@ -38,7 +60,7 @@ final class ChatHttpServer {
      * @return The started HttpServer instance.
      * @throws IOException If an I/O error occurs while starting the server.
      */
-    static HttpServer start(ChatServerHub hub, SerConfig cfg) throws IOException {
+    public static HttpServer start(ChatServerHub hub, SerConfig cfg) throws IOException {
         return start(hub, cfg, new String[0]);
     }
 
@@ -52,7 +74,7 @@ final class ChatHttpServer {
      * @return The started HttpServer instance.
      * @throws IOException If an I/O error occurs while starting the server.
      */
-    static HttpServer start(ChatServerHub hub, SerConfig cfg, String[] originalArgs) throws IOException {
+    public static HttpServer start(ChatServerHub hub, SerConfig cfg, String[] originalArgs) throws IOException {
         HttpServer server = HttpServer.createSimpleServer(null, PORT_HTTP);
         long startMillis = System.currentTimeMillis();
 

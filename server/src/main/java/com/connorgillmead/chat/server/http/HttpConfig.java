@@ -1,6 +1,6 @@
 // HttpConfig.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.http;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -18,7 +18,7 @@ import java.util.Map;
  * durations.
  * This class is not meant to be instantiated.
  */
-final class HttpConfig {
+public final class HttpConfig {
     private HttpConfig() { }
 
     /**
@@ -30,8 +30,8 @@ final class HttpConfig {
      * @return The content of the HTML file as a string.
      * @throws IOException If an I/O error occurs while reading the file.
      */
-    static String loadHtml(String resourcePath) throws IOException {
-        try (InputStream input = ChatHttpServer.class.getClassLoader().getResourceAsStream(resourcePath)) {
+    public static String loadHtml(String resourcePath) throws IOException {
+        try (InputStream input = HttpConfig.class.getClassLoader().getResourceAsStream(resourcePath)) {
             if (input == null) {
                 throw new FileNotFoundException("Cannot find resource: " + resourcePath);
             }
@@ -47,7 +47,7 @@ final class HttpConfig {
      * @param formData The URL-encoded form data as a string.
      * @return A map containing the parsed key-value pairs.
      */
-    static Map<String, String> parseFormData(String formData) {
+    public static Map<String, String> parseFormData(String formData) {
         Map<String, String> map = new HashMap<>();
         for (String pair : formData.split("&")) {
             String[] kv = pair.split("=", 2);
@@ -68,7 +68,7 @@ final class HttpConfig {
      * @param duration The Duration object to format.
      * @return A string representation of the duration in a human-readable format.
      */
-    static String formatDuration(Duration duration) {
+    public static String formatDuration(Duration duration) {
         // Constants for time units.
         final int totalHours = 24;
         final int totalOther = 60;

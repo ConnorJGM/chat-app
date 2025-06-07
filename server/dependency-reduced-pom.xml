@@ -20,7 +20,7 @@
             <configuration>
               <transformers>
                 <transformer>
-                  <mainClass>com.connorgillmead.chat.server.ChatServerApp</mainClass>
+                  <mainClass>com.connorgillmead.chat.server.tcp.ChatServerApp</mainClass>
                 </transformer>
               </transformers>
             </configuration>

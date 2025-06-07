@@ -1,10 +1,12 @@
 // WebSocketChatEndpoint.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.websocket;
 
 import com.connorgillmead.chat.common.ChatMessage;
 import com.connorgillmead.chat.server.database.Database;
 import com.connorgillmead.chat.server.database.MessageDBHandler;
+import com.connorgillmead.chat.server.tcp.ChatServerHub;
+import com.connorgillmead.chat.server.utilities.CommandHelper;
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnError;
 import jakarta.websocket.OnMessage;

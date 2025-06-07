@@ -1,7 +1,10 @@
 // WebPageServer.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.http.ui;
 
+import com.connorgillmead.chat.server.http.ChatHttpServer;
+import com.connorgillmead.chat.server.http.HttpConfig;
+import com.connorgillmead.chat.server.tcp.ChatServerHub;
 import java.io.IOException;
 import java.time.Duration;
 import org.glassfish.grizzly.http.server.HttpHandler;
@@ -14,7 +17,7 @@ import org.glassfish.grizzly.http.server.Response;
  * It provides endpoints for displaying server status, connected users, and the chat interface.
  * This class is not meant to be instantiated.
  */
-final class WebPageServer {
+public final class WebPageServer {
     // Private constructor to prevent instantiation.
     // This class is a utility class and should not be instantiated.
     private WebPageServer() { }
@@ -28,7 +31,7 @@ final class WebPageServer {
      * @param hub         The ChatServerHub instance that manages chat functionality.
      * @param startMillis The start time of the server in milliseconds.
      */
-    static void register(HttpServer server, ChatServerHub hub, long startMillis) {
+    public static void register(HttpServer server, ChatServerHub hub, long startMillis) {
         server.getServerConfiguration()
                 .addHttpHandler(createRootHandler(hub, startMillis), "/");
         server.getServerConfiguration()

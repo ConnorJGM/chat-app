@@ -1,8 +1,11 @@
 // CommandHelper.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.utilities;
 
 import com.connorgillmead.chat.common.ChatMessage;
+import com.connorgillmead.chat.server.tcp.ChatServerHub;
+import com.connorgillmead.chat.server.tcp.ClientHandler;
+import com.connorgillmead.chat.server.websocket.WebHandler;
 import java.util.Arrays;
 
 /**

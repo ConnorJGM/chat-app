@@ -1,15 +1,18 @@
 // ChatServerHub.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.tcp;
 
 import com.connorgillmead.chat.common.ChatMessage;
 import com.connorgillmead.chat.server.database.MessageDBHandler;
+import com.connorgillmead.chat.server.utilities.NumberGame;
+import com.connorgillmead.chat.server.utilities.Poll;
+import com.connorgillmead.chat.server.websocket.WebHandler;
+import com.connorgillmead.chat.server.websocket.WebSocketChatEndpoint;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * This class is responsible for adding and removing clients,
  * as well as broadcasting messages to all connected clients.
  */
-final class ChatServerHub {
+public final class ChatServerHub {
     /**
      * The path to the log file where chat messages are stored.
      * This is a static final field, meaning it is a constant value that does not
@@ -56,7 +59,7 @@ final class ChatServerHub {
      *
      * @param c The client handler to add.
      */
-    void addClient(ClientHandler c) {
+    public void addClient(ClientHandler c) {
         clients.add(c);
         append(String.format("[%s] JOIN %s",
                 Instant.now(), c.getUsername()));
@@ -70,7 +73,7 @@ final class ChatServerHub {
      *
      * @param c The client handler to remove.
      */
-    void removeClient(ClientHandler c) {
+    public void removeClient(ClientHandler c) {
         clients.remove(c);
         append(String.format("[%s] LEAVE %s",
                 Instant.now(), c.getUsername()));
@@ -88,7 +91,7 @@ final class ChatServerHub {
      *         This method checks if the username is already in use by another
      *         client.
      */
-    synchronized boolean reserveName(String user) {
+    public synchronized boolean reserveName(String user) {
         for (String u : namesInUse) {
             if (u.equalsIgnoreCase(user)) {
                 return false;
@@ -125,7 +128,7 @@ final class ChatServerHub {
      * @param user The username to release.
      *             This method removes the username from the set of names in use.
      */
-    synchronized void releaseName(String user) {
+    public synchronized void releaseName(String user) {
         if (user != null) {
             namesInUse.removeIf(u -> u.equalsIgnoreCase(user));
         }
@@ -139,7 +142,7 @@ final class ChatServerHub {
      *
      * @param msg The message to broadcast.
      */
-    void broadcast(ChatMessage msg) {
+    public void broadcast(ChatMessage msg) {
         // Append the message to the log file if not "roster".
         if (!"roster".equals(msg.getType())) {
             append(msg.toJson());
@@ -222,42 +225,17 @@ final class ChatServerHub {
 
     // Returns the number of connected users.
     // This method returns the size of the set of connected clients.
-    int userCount() {
+    public int userCount() {
         return clients.size();
     }
 
     // Returns a list of usernames of connected clients.
     // This method returns a sorted list of usernames obtained from the set of
     // connected clients.
-    List<String> getUsernames() {
+    public List<String> getUsernames() {
         return namesInUse.stream()
                 .sorted(String::compareToIgnoreCase)
                 .toList();
-    }
-
-    /**
-     * Kicks a client from the chat server.
-     * This method is called to disconnect a client by their username.
-     *
-     * @param username The username of the client to kick.
-     *                 This method iterates through both TCP and WebSocket clients
-     *                 to find the client with the specified username.
-     */
-    public synchronized void kickClient(String username) {
-        Iterator<ClientHandler> client = clients.iterator();
-        while (client.hasNext()) {
-            ClientHandler clientHandler = client.next();
-            if (username.equals(clientHandler.getUsername())) {
-                clientHandler.send(ChatMessage.kick("You have been kicked from the chat."));
-                if (clientHandler instanceof WebHandler web) {
-                    web.close();
-                } else {
-                    clientHandler.disconnect();
-                }
-                client.remove();
-                break;
-            }
-        }
     }
 
     /**

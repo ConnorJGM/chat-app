@@ -1,6 +1,6 @@
 // ChatClientNet.java
 
-package com.connorgillmead.chat.client;
+package com.connorgillmead.chat.client.cli;
 
 import com.connorgillmead.chat.common.ChatMessage;
 import com.google.gson.JsonSyntaxException;
@@ -18,7 +18,7 @@ import java.util.concurrent.BlockingQueue;
  * This class is not meant to be instantiated.
  * It is a static utility class that provides a single method for reading messages.
  */
-final class ChatClientNet {
+public final class ChatClientNet {
 
     // Private constructor to prevent instantiation.
     private ChatClientNet() {
@@ -35,7 +35,7 @@ final class ChatClientNet {
      * @throws InterruptedException If the thread is interrupted.
      * @throws SocketException If the socket is closed.
      */
-    static void readLoop(Socket socket, BlockingQueue<ChatMessage> queue) {
+    public static void readLoop(Socket socket, BlockingQueue<ChatMessage> queue) {
         try (BufferedReader in = new BufferedReader(
                 new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))) {
             String line;

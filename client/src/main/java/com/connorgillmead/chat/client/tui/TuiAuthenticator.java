@@ -1,6 +1,6 @@
 // TuiAuthenticator.java
 
-package com.connorgillmead.chat.client;
+package com.connorgillmead.chat.client.tui;
 
 import com.connorgillmead.chat.common.ChatMessage;
 import com.googlecode.lanterna.TerminalSize;

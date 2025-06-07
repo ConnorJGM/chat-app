@@ -1,6 +1,6 @@
 // ChatServerHub.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.tcp;
 
 import com.connorgillmead.chat.server.database.Database;
 import jakarta.websocket.DeploymentException;

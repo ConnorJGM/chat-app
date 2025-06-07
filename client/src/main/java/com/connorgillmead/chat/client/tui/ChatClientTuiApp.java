@@ -1,7 +1,10 @@
 // ChatClientTuiApp.java
 
-package com.connorgillmead.chat.client;
+package com.connorgillmead.chat.client.tui;
 
+import com.connorgillmead.chat.client.cli.ChatClient;
+import com.connorgillmead.chat.client.cli.ChatClientNet;
+import com.connorgillmead.chat.client.cli.CliConfig;
 import com.connorgillmead.chat.common.ChatMessage;
 import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.gui2.BasicWindow;

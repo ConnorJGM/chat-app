@@ -1,6 +1,6 @@
 // NumberGame.java
 
-package com.connorgillmead.chat.server;
+package com.connorgillmead.chat.server.utilities;
 
 import java.util.Random;
 

@@ -1,6 +1,6 @@
 // ChatClient.java
 
-package com.connorgillmead.chat.client;
+package com.connorgillmead.chat.client.cli;
 
 import java.io.IOException;
 import java.net.Socket;

@@ -1,6 +1,6 @@
 // ChatClientApp.java
 
-package com.connorgillmead.chat.client;
+package com.connorgillmead.chat.client.cli;
 
 import com.connorgillmead.chat.common.ChatMessage;
 import java.io.BufferedReader;
@@ -84,14 +84,14 @@ public final class ChatClientApp {
             }
 
             // Start a new thread to read messages from the server.
-            CliConfig.startReader(socket, authenticatedUsername);
+            CliConfig.startReader(socket, authenticatedUsername, input);
 
             // Notify the server that the user has joined the chat.
             out.println(ChatMessage.hello(authenticatedUsername, token).toJson());
 
             // This thread reads user input from the console and sends it to the server.
             // It runs in a loop until the user enters "exit" or an I/O error occurs.
-            while (console.hasNextLine()) {
+            while (!socket.isClosed() && console.hasNextLine()) {
                 String text = console.nextLine();
 
                 // If the user enters "exit", notify the server and break the loop.
