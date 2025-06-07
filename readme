@@ -1,0 +1,251 @@
+# Chat Application
+
+A real-time chat application that allows users to communicate with each other. This project is a Java-based application with a client-server architecture, 
+    supporting both command-line (CLI) and text-based user interface (TUI) clients, as well as a web-based client.
+
+## Project Structure
+
+The project is organized into three main Maven modules:
+
+*   **`common/`**: Contains shared code used by both the client and server, primarily the [`com.connorgillmead.chat.common.ChatMessage`]
+            (common/src/main/java/com/connorgillmead/chat/common/ChatMessage.java) class for message handling.
+
+*   **`server/`**: Implements the chat server.
+    *   Handles TCP connections for CLI/TUI clients ([`com.connorgillmead.chat.server.tcp.ChatServerApp`]
+            (server/src/main/java/com/connorgillmead/chat/server/tcp/ChatServerApp.java)).
+
+    *   Handles WebSocket connections for web clients ([`com.connorgillmead.chat.server.websocket.WebSocketChatEndpoint`]
+            (server/src/main/java/com/connorgillmead/chat/server/websocket/WebSocketChatEndpoint.java)).
+            
+    *   Manages user authentication and message broadcasting.
+
+    *   Serves a web-based chat interface ([`server/src/main/resources/web-pages/chat.html`]
+            (server/src/main/resources/web-pages/chat.html)).
+
+*   **`client/`**: Implements the chat client.
+    *   **CLI Client**: A command-line interface client ([`com.connorgillmead.chat.client.cli.ChatClientApp`]
+            (client/src/main/java/com/connorgillmead/chat/client/cli/ChatClientApp.java)).
+
+    *   **TUI Client**: A text-based user interface client using Lanterna ([`com.connorgillmead.chat.client.tui.ChatClientTuiApp`]
+            (client/src/main/java/com/connorgillmead/chat/client/tui/ChatClientTuiApp.java)).
+
+## Prerequisites
+
+*   Java Development Kit (JDK) 11 or higher.
+*   Apache Maven.
+*   Modern web browser (for the web client).
+
+## Building the Application
+
+1.  Clone the repository:
+    ```bash
+    git clone <repository-url>
+    cd chat-app
+    ```
+
+2.  Build the project using Maven from the root directory:
+    ```bash
+    mvn clean package
+    ```
+    This will compile the code and create JAR files in the `target/` directory of each module 
+            (e.g., `client/target/chat-client-cli.jar`, `client/target/chat-client-tui.jar`, `server/target/chat-server-1.0-SNAPSHOT.jar`).
+
+## Running the Application
+
+### Server
+
+1.  Navigate to the server's target directory:
+    ```bash
+    cd server/target
+    ```
+
+2.  Run the server JAR:
+    ```bash
+    java -jar chat-server-1.0-SNAPSHOT.jar
+    ```
+    The server will start, and you can configure it via command-line arguments or by following the prompts (e.g., for host, port, and token). 
+            By default, it typically listens for TCP clients on port `5555` and WebSocket clients on port `8081`. 
+                The web interface is usually available at `http://localhost:8080/`.
+
+    "http://localhost:8080/" is the default URL for the web statistic dashboard, but this can be configured in the server settings.
+
+    "http://localhost:8080/users" is the endpoint for user management, allowing you to register and log in users.
+
+        You can navigate between the dashboard and user management pages using the links provided in the web interface.
+
+### Client
+
+#### CLI Client
+
+1.  Navigate to the client's target directory:
+    ```bash
+    cd client/target
+    ```
+
+2.  Run the CLI client JAR:
+    ```bash
+    java -jar chat-client-cli.jar
+    ```
+    You will be prompted to enter the server host, port, and optionally an access token. 
+        After successful connection and authentication, you can send and receive messages.
+
+#### TUI Client
+
+1.  Navigate to the client's target directory:
+    ```bash
+    cd client/target
+    ```
+
+2.  Run the TUI client JAR:
+    ```bash
+    java -jar chat-client-tui.jar
+    ```
+    A text-based interface will launch, prompting for connection details. 
+        After connecting and authenticating, you can chat within the TUI.
+
+#### Web Client
+
+1.  Ensure the server is running.
+2.  Open your web browser and navigate to `http://localhost:8080/chat` 
+        (or the host/port configured for the server's web interface).
+3.  You can log in or register directly from the web page.
+4.  Once logged in, you can send and receive messages in real-time.
+
+## Key Features
+
+*   **Real-time Messaging**: Instantaneous message delivery between connected clients.
+*   **Multiple Client Types**: Supports CLI, TUI, and Web clients.
+*   **Encrypted Communication**: TCP client connections are secured using SSL/TLS.
+*   **Hashed Passwords**: All user passwords are securely hashed using BCrypt for authentication.
+*   **User Authentication**: Secure login and registration for users.
+*   **Access Token Support**: Optional token-based authentication for server access (password).
+*   **User Roster**: Clients can see a list of currently connected users.
+*   **Interactive Commands**: Clients can send commands like `/help`, `/who`, and `/quit` to interact with the server.
+*   **Multiplayer Game Support**: The server can host multiplayer games, allowing users to play games like number guesser or create polls.
+*   **Server Administration**: Basic server commands like kicking users and shutting down the server (via server console),
+        alongside the ability to restart the server from the web dashboard.
+*   **Persistent Storage**: User accounts and message history are stored in a database (`chat.db`).
+*   **Server Logging**: Server logs server start, server end, user connections, disconnections, and messages for monitoring.
+
+## Additional Information
+
+*   **Database**: The application uses SQLite for persistent storage of user accounts and message history. 
+        The database file is located in the server's working directory as `chat.db`.
+
+*   **Configuration**: The server can be configured via command-line arguments or environment variables.
+            For example, you can specify the host, port, and access token when starting the server (--host, --port, --token).
+
+*   **PowerShell Script**: A PowerShell script (`start-server.ps1`) is provided to restart the server via web.
+        You can run it in a PowerShell terminal to start the server.
+
+## Program File Layout
+
+chat-app/
+├── .editorconfig
+├── .gitignore
+├── chat.db
+├── chat.log
+├── pom.xml
+├── readme
+├── server_config.properties
+├── server_start.ps1
+├── .vscode/
+│   └── settings.json
+├── client/
+│   ├── dependency-reduced-pom.xml
+│   ├── pom.xml
+│   ├── src/
+│   │   ├── main/
+│   │   │   └── java/
+│   │   │       └── com/
+│   │   │           └── connorgillmead/
+│   │   │               └── chat/
+│   │   │                   └── client/
+│   │   │                       ├── cli/
+│   │   │                       │   ├── AuthenticationHandler.java
+│   │   │                       │   ├── ChatClient.java
+│   │   │                       │   ├── ChatClientApp.java
+│   │   │                       │   ├── ChatClientNet.java
+│   │   │                       │   └── CliConfig.java
+│   │   │                       └── tui/
+│   │   │                           ├── ChatClientTuiApp.java
+│   │   │                           └── TuiAuthenticator.java
+│   │   └── test/
+│   │       └── java/
+│   │           └── com/
+│   │               └── connorgillmead/
+│   │                   └── chat/
+│   │                       └── client/ 
+│   │                           └── // Client test files (e.g., AppTest.java)
+│   └── target/
+│       ├── chat-client-1.0-SNAPSHOT-shaded.jar
+│       ├── chat-client-1.0-SNAPSHOT.jar
+│       ├── chat-client-cli.jar
+│       └── ... (other client target files)
+├── common/
+│   ├── dependency-reduced-pom.xml
+│   ├── pom.xml
+│   ├── src/
+│   │   └── main/
+│   │       └── java/
+│   │           └── com/
+│   │               └── connorgillmead/
+│   │                   └── chat/
+│   │                       └── common/
+│   │                           └── ChatMessage.java
+│   └── target/
+│       └── ... (common target files)
+├── server/
+│   ├── dependency-reduced-pom.xml
+│   ├── pom.xml
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/
+│   │   │   │   └── com/
+│   │   │   │       └── connorgillmead/
+│   │   │   │           └── chat/
+│   │   │   │               └── server/
+│   │   │   │                   ├── database/
+│   │   │   │                   │   ├── Database.java
+│   │   │   │                   │   └── MessageDBHandler.java
+│   │   │   │                   ├── http/
+│   │   │   │                   │   ├── api/
+│   │   │   │                   │   │   └── ApiServer.java
+│   │   │   │                   │   ├── ui/
+│   │   │   │                   │   │   └── WebPageServer.java
+│   │   │   │                   │   ├── ChatHttpServer.java
+│   │   │   │                   │   └── HttpConfig.java
+│   │   │   │                   ├── tcp/
+│   │   │   │                   │   ├── ChatServer.java
+│   │   │   │                   │   ├── ChatServerApp.java
+│   │   │   │                   │   ├── ChatServerHub.java
+│   │   │   │                   │   ├── ClientHandler.java
+│   │   │   │                   │   └── SerConfig.java
+│   │   │   │                   ├── utilities/
+│   │   │   │                   │   ├── CommandHelper.java
+│   │   │   │                   │   ├── NumberGame.java
+│   │   │   │                   │   └── Poll.java
+│   │   │   │                   └── websocket/
+│   │   │   │                       ├── WebHandler.java
+│   │   │   │                       └── WebSocketChatEndpoint.java
+│   │   │   └── resources/
+│   │   │       ├── db_chat_schema.sql
+│   │   │       ├── keystore.p12
+│   │   │       └── web-pages/
+│   │   │           ├── chat.html
+│   │   │           ├── dashboard.html
+│   │   │           ├── footer.html
+│   │   │           ├── header.html
+│   │   │           └── users.html
+│   │   └── test/
+│   │       └── java/
+│   │           └── com/
+│   │               └── connorgillmead/
+│   │                   └── chat/
+│   │                       └── AppTest.java
+│   └── target/
+│       └── ... (server target files)
+└── target/
+    ├── checkstyle-cachefile
+    ├── checkstyle-checker.xml
+    └── checkstyle-result.xml
