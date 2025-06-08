@@ -37,19 +37,42 @@ public class Poll {
         }
     }
 
-    // Getters for the fields.
+    /**
+     * Returns the owner of the poll.
+     * This method is called to retrieve the owner of the poll.
+     *
+     * @return The owner of the poll.
+     */
     public String getOwner() {
         return owner;
     }
 
+    /**
+     * Returns whether the poll is active.
+     * This method is called to check if the poll is still open for voting.
+     *
+     * @return True if the poll is active, false if it has been finished.
+     */
     public Boolean isActive() {
         return active;
     }
 
+    /**
+     * Returns the question of the poll.
+     * This method is called to retrieve the question of the poll.
+     *
+     * @return The question of the poll.
+     */
     public String getQuestion() {
         return question;
     }
 
+    /**
+     * Returns the options of the poll.
+     * This method is called to retrieve the options available for voting in the poll.
+     *
+     * @return A map containing the options and their corresponding vote counts.
+     */
     public Map<String, Integer> getOptions() {
         return options;
     }

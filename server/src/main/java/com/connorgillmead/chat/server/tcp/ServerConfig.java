@@ -167,6 +167,8 @@ public record ServerConfig(String host, int port, String token, boolean hostGive
      * @param serverConfig The ServerConfig object containing the default values.
      *           This object is used to check if the user has provided values for
      *           host, port, and token.
+     * @param scanner The Scanner instance used to read user input from the console.
+     *                This instance is used to prompt the user for missing values.
      * @return A new ServerConfig object with the provided or default values.
      *         The object contains the host name, port number, and access token.
      */
@@ -250,14 +252,16 @@ public record ServerConfig(String host, int port, String token, boolean hostGive
      * It is used to provide a simple HTTP interface to check the server status and
      * connected users.
      *
-     * @param cfg The ServerConfig object containing the server configuration.
-     *            This object contains the host name, port number, and access token.
+     * @param config The ServerConfig object containing the server configuration.
+     *               This object contains the host name, port number, and access token.
      * @return A new ChatServerHub instance.
      *         The ChatServerHub is responsible for managing connected clients and
      *         broadcasting messages.
      * @throws IOException If an I/O error occurs when starting the HTTP server.
      *                     This may happen if the server cannot bind to the
      *                     specified port.
+     * @throws DeploymentException If an error occurs when deploying the WebSocket
+     *                              endpoint.
      */
     public static ChatServerHub startAncillaryServer(ServerConfig config) throws IOException, DeploymentException {
         ChatServerHub hub = new ChatServerHub();
@@ -294,8 +298,8 @@ public record ServerConfig(String host, int port, String token, boolean hostGive
      * It creates a new thread for each client connection and handles authentication
      * and duplicate name checks.
      *
-     * @param cfg The ServerConfig object containing the server configuration.
-     *            This object contains the host name, port number, and access token.
+     * @param config  The ServerConfig object containing the server configuration.
+     *                 This object contains the host name, port number, and access token.
      * @param hub The ChatServerHub instance managing connected clients.
      *            The ChatServerHub is responsible for broadcasting messages to all
      *            connected clients.

@@ -75,8 +75,11 @@ public final class ChatClientTuiApp {
     private Timer timer;
     private int everyMillis;
 
-    // Constructor for ChatClientTuiApp.
-    // Initialises the timer and sets the drain interval.
+    /**
+     * Constructor for ChatClientTuiApp.
+     * Initialises the timer and sets the drain interval.
+     * The drain interval is used to control how often messages are processed from the queue.
+     */
     public ChatClientTuiApp() {
         this.timer = new Timer("drain", true);
         this.everyMillis = DRAIN;
@@ -86,9 +89,6 @@ public final class ChatClientTuiApp {
      * Main method to start the lanterna client.
      * It connects to the server and starts two threads: one for sending messages and another for receiving messages.
      * @param arguments The first argument is the hostname, and the second argument is the port number.
-     * @throws IOException If an I/O error occurs when creating the socket or transferring data.
-     * @throws GeneralSecurityException If a security error occurs when creating the socket.
-     *         This can happen if the SSL/TLS protocol is not supported or if the trust manager cannot be initialised.
      */
     public static void main(String[] arguments) {
         try {

@@ -31,9 +31,6 @@ public final class ChatClientNet {
      * The loop continues until the socket is closed or an error occurs.
      * @param socket The socket to read from.
      * @param queue The queue to put messages into.
-     * @throws IOException If an I/O error occurs.
-     * @throws InterruptedException If the thread is interrupted.
-     * @throws SocketException If the socket is closed.
      */
     public static void readLoop(Socket socket, BlockingQueue<ChatMessage> queue) {
         try (BufferedReader bufferedReader = new BufferedReader(

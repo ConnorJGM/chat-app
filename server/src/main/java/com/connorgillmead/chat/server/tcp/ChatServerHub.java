@@ -20,9 +20,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Manages the clients connected to the chat server.
- * This class is responsible for adding and removing clients,
- * as well as broadcasting messages to all connected clients.
+ * ChatServerHub is a singleton class that manages the chat server's state and
+ * functionality.
+ * It handles client connections, message broadcasting, user management, and game
+ * and poll management.
+ * This class is designed to be thread-safe and can handle multiple clients
+ * concurrently.
  */
 public final class ChatServerHub {
     /**
@@ -63,6 +66,15 @@ public final class ChatServerHub {
     // Creates a token for the chat server.
     // This token is used to authenticate clients and manage their sessions.
     private String token;
+
+    /**
+     * Private constructor to prevent instantiation.
+     * This class is not meant to be instantiated; it only contains static methods
+     * and a singleton instance.
+     * The constructor is private to ensure that the class cannot be instantiated
+     * from outside.
+     */
+    public ChatServerHub() { }
 
     /**
      * Private constructor to prevent instantiation.
@@ -246,15 +258,24 @@ public final class ChatServerHub {
         }
     }
 
-    // Returns the number of connected users.
-    // This method returns the size of the set of connected clients.
+    /**
+     * Returns the number of connected users.
+     * This method returns the size of the set of connected clients.
+     *
+     * @return The number of connected users.
+     */
     public int userCount() {
         return clients.size();
     }
 
-    // Returns a list of usernames of connected clients.
-    // This method returns a sorted list of usernames obtained from the set of
-    // connected clients.
+    /**
+     * Returns a sorted list of usernames currently in use.
+     * This method returns a list of usernames that are currently reserved by
+     * connected clients.
+     * The usernames are sorted in a case-insensitive manner.
+     *
+     * @return A sorted list of usernames currently in use.
+     */
     public List<String> getUsernames() {
         return namesInUse.stream()
                 .sorted(String::compareToIgnoreCase)
@@ -323,6 +344,14 @@ public final class ChatServerHub {
         return reply;
     }
 
+    /**
+     * Checks if there is an active number guessing game.
+     * This method is called to determine if a number game is currently in progress.
+     *
+     * @return True if there is an active number game, false otherwise.
+     *         This method checks if the current number game is not null and if it
+     *         is active.
+     */
     public synchronized boolean hasActiveNumberGame() {
         return currentNumberGame != null && currentNumberGame.isActive();
     }
@@ -374,6 +403,9 @@ public final class ChatServerHub {
      * Finishes the poll.
      * This method is called when the poll owner wants to finish the poll.
      *
+     * @param requester The name of the player requesting to finish the poll.
+     *                  This method checks if the poll is active and if the requester
+     *                  is the owner of the poll.
      * @return A message indicating the results of the poll or an error message if
      *         there is no active poll.
      *         This method checks if the poll is active and if the owner is the one
@@ -391,8 +423,14 @@ public final class ChatServerHub {
         return results;
     }
 
-    // Checks if there is an active poll.
-    // This method checks if the current poll is not null and if it is active.
+    /**
+     * Checks if there is an active poll.
+     * This method is called to determine if a poll is currently in progress.
+     *
+     * @return True if there is an active poll, false otherwise.
+     *         This method checks if the current poll is not null and if it is
+     *         active.
+     */
     public synchronized boolean hasActivePoll() {
         return currentPoll != null && currentPoll.isActive();
     }

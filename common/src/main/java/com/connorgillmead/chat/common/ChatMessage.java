@@ -12,10 +12,15 @@ import com.google.gson.GsonBuilder;
 import java.util.List;
 
 /**
- * Represents a chat message in the chat application.
- * This class contains the message type, user, body, and timestamp.
- * It provides methods to convert the message to and from JSON format.
- * The message type is used to distinguish between different types of messages (e.g., text, image).
+ * ChatMessage is a class that represents a message in the chat application.
+ * It contains various fields to store information about the message, such as
+ * the type of message, the user who sent it, the body of the message, and
+ * additional metadata like time, token, user list, password, success status,
+ * and message content.
+ * <p>
+ * This class provides methods to create different types of chat messages,
+ * convert them to JSON format, and deserialize JSON strings back into
+ * ChatMessage objects.
  */
 public final class ChatMessage {
     /**
@@ -51,43 +56,113 @@ public final class ChatMessage {
     private boolean success;
     private String message;
 
-    // Getters for the fields.
+    /**
+     * Default constructor for ChatMessage.
+     * This constructor is used for deserialisation from JSON.
+     * It initializes the fields to their default values.
+     */
+    public ChatMessage() { }
+
+    /**
+     * Default constructor for ChatMessage.
+     * This constructor is used for deserialisation from JSON.
+     * It initializes the fields to their default values.
+     *
+     * @return A new instance of ChatMessage with default values.
+     */
     public String getType() {
         return type;
     }
 
+    /**
+     * Returns the user who sent the chat message.
+     * The user is typically the username or identifier of the person who sent the message.
+     *
+     * @return The user who sent the chat message.
+     */
     public String getUser() {
         return user;
     }
 
+    /**
+     * Returns the body of the chat message.
+     * The body contains the actual content of the message, such as text or media.
+     *
+     * @return The body of the chat message.
+     */
     public String getBody() {
         return body;
     }
 
+    /**
+     * Returns the timestamp of when the chat message was sent.
+     * The time is represented as milliseconds since the epoch (January 1, 1970).
+     *
+     * @return The timestamp of the chat message in milliseconds.
+     */
     public long getTime() {
         return time;
     }
 
+    /**
+     * Returns the token associated with the chat message.
+     * The token is used for authentication or session management.
+     * It can be null if not set.
+     *
+     * @return The token associated with the chat message, or null if not set.
+     */
     public String getToken() {
         return token;
     }
 
+    /**
+     * Returns the list of users connected to the chat.
+     * This list is typically used to display the roster of users in the chat application.
+     *
+     * @return The list of users connected to the chat.
+     */
     public List<String> getUserList() {
         return users;
     }
 
+    /**
+     * Returns the password associated with the chat message.
+     * This field is used for authentication purposes, such as logging in or registering a user.
+     * It can be null if not set.
+     *
+     * @return The password associated with the chat message, or null if not set.
+     */
     public String getPassword() {
         return password;
     }
 
+    /**
+     * Returns whether the chat message indicates a successful operation.
+     * This field is typically used in responses to login or registration requests.
+     *
+     * @return true if the operation was successful, false otherwise.
+     */
     public boolean isSuccess() {
         return success;
     }
 
+    /**
+     * Returns the message associated with the chat message.
+     * This field is used to provide additional information or context about the message,
+     * such as error messages or notifications.
+     *
+     * @return The message associated with the chat message, or null if not set.
+     */
     public String getMessage() {
         return message;
     }
 
+    /**
+     * Sets the token for the chat message.
+     * This method is used to set the token for authentication or session management.
+     * @param token The token to be set for the chat message.
+     *             This could be a session token or a unique identifier for the user.
+     */
     public void setToken(String token) {
         this.token = token;
     }
@@ -150,6 +225,7 @@ public final class ChatMessage {
      * This constructor is used for deserialization from JSON.
      *
      * @param user The user who sent the message.
+     * @return A new ChatMessage object with the specified user, body, and time.
      */
     public static ChatMessage bye(String user) {
         ChatMessage m = new ChatMessage();
@@ -291,20 +367,35 @@ public final class ChatMessage {
         return m;
     }
 
-    /// Converts the ChatMessage object to a JSON string.
-    /// This method uses the Gson library to serialize the object to JSON format.
+    /**
+     * Converts the ChatMessage object to a JSON string.
+     * This method uses the Gson library to serialise the ChatMessage object into JSON format.
+     * @return A JSON string representation of the ChatMessage object.
+     *         This string can be used for sending messages over the network or for logging purposes.
+     */
     public String toJson() {
         return GSON.toJson(this);
     }
 
-    /// Converts the ChatMessage object to a JSON string for logging.
-    /// This method uses a custom Gson instance that excludes certain fields from the JSON output.
+    /**
+     * Converts the ChatMessage object to a JSON string for logging purposes.
+     * This method uses a custom Gson instance that excludes certain fields from the JSON output.
+     * @return A JSON string representation of the ChatMessage object, suitable for logging.
+     *         This string does not include sensitive information such as passwords or tokens.
+     */
     public String toLogJson() {
         return GSON_FOR_LOG.toJson(this);
     }
 
-    /// Converts a JSON string to a ChatMessage object.
-    /// This method uses the Gson library to deserialize the JSON string into a ChatMessage object.
+    /**
+     * Converts a JSON string to a ChatMessage object.
+     * This method uses the Gson library to deserialise the JSON string into a ChatMessage object.
+     *
+     * @param j The JSON string to be deserialised.
+     * @return A ChatMessage object created from the JSON string.
+     *         If the JSON string is invalid or does not match the ChatMessage structure,
+     *         an exception will be thrown.
+     */
     public static ChatMessage fromJson(String j) {
         return GSON.fromJson(j, ChatMessage.class);
     }

@@ -37,6 +37,8 @@ public final class AuthenticationHandler {
      * @param printWriter    The PrintWriter object to send messages to the server.
      * @param bufferedReader The BufferedReader object to read responses from the
      *                       server.
+     * @param token          The authentication token used for secure communication
+     *                       with the server.
      */
     public AuthenticationHandler(Scanner scanner, PrintWriter printWriter,
             BufferedReader bufferedReader, String token) {

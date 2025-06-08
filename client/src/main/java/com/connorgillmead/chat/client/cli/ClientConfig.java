@@ -123,8 +123,12 @@ public record ClientConfig(String host, int port, String user, String token) {
         return new ClientConfig(host, port, user, token);
     }
 
-    // Default port number getter for the chat server.
-    // This is used if no port number is provided as a command-line argument.
+    /**
+     * Returns the default port number for the chat server.
+     * This method is called to retrieve the default port number used by the chat client.
+     *
+     * @return The default port number (5555).
+     */
     public static int defaultPort() {
         return DEFAULT_PORT;
     }

@@ -32,6 +32,13 @@ public class WebSocketChatEndpoint {
     private static ChatServerHub hub;
 
     /**
+     * Default constructor for WebSocketChatEndpoint.
+     * This constructor is used to create a new instance of the WebSocket endpoint.
+     * It initializes the WebSocket endpoint without any parameters.
+    */
+    public WebSocketChatEndpoint() { }
+
+    /**
      * Returns the set of WebSocket sessions.
      * This method is used to get the current WebSocket sessions.
      * @return The set of WebSocket sessions.
@@ -66,6 +73,7 @@ public class WebSocketChatEndpoint {
      * This method is called when a message is received from the client.
      * @param json The JSON string representing the ChatMessage.
      * @param session The WebSocket session that sent the message.
+     * @throws IOException If an I/O error occurs while sending a response.
     */
     @OnMessage
     public void onMessage(String json, Session session) throws IOException {

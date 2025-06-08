@@ -43,7 +43,10 @@ public final class ApiServer {
      * @param server      The HttpServer instance to register handlers with.
      * @param hub         The ChatServerHub instance that manages chat
      *                    functionality.
+     * @param cfg         The ServerConfig instance that contains server
+     *                    configuration.
      * @param startMillis The start time of the server in milliseconds.
+     * @param originalArgs The original command-line arguments passed to the server.
      */
     public static void register(HttpServer server,
                          ChatServerHub hub,

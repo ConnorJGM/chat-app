@@ -31,6 +31,8 @@ public final class ChatServer implements AutoCloseable {
      * This constructor loads the keystore from a file and initialises the SSL context.
      *
      * @param port The port number on which the server will listen for incoming connections.
+     * @param host The hostname or IP address to bind the server socket to.
+     *             If null, the server will bind to all available network interfaces.
      * @throws IOException If an I/O error occurs when loading the keystore or creating the server socket.
      * @throws GeneralSecurityException If a security error occurs when loading the keystore
      *                                  or initialising the SSL context.

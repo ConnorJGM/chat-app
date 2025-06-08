@@ -3,6 +3,7 @@
 chat.log
 server_config.properties
 chat.db
+javadocs
 
 # IDE folders
 .vscode/

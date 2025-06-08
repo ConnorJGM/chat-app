@@ -58,6 +58,8 @@ public final class ChatHttpServer {
      * and starts the server to listen for incoming requests.
      *
      * @param hub The ChatServerHub instance that manages chat functionality.
+     * @param config The ServerConfig instance that contains server configuration
+     *               settings.
      * @return The started HttpServer instance.
      * @throws IOException If an I/O error occurs while starting the server.
      */
@@ -72,6 +74,10 @@ public final class ChatHttpServer {
      * and starts the server to listen for incoming requests.
      *
      * @param hub The ChatServerHub instance that manages chat functionality.
+     * @param config The ServerConfig instance that contains server configuration
+     *               settings.
+     * @param originalArguments The original command-line arguments passed to the
+     *                         server.
      * @return The started HttpServer instance.
      * @throws IOException If an I/O error occurs while starting the server.
      */

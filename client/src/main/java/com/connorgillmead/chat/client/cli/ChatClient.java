@@ -53,7 +53,10 @@ public final class ChatClient implements AutoCloseable {
         this.socket = sslSocketFactory.createSocket(host, port);
     }
 
-    /** Returns the socket used to communicate with the server. */
+    /** Returns the socket used to communicate with the server.
+     *
+     * @return The socket used for communication.
+    */
     public Socket socket() {
         return socket;
     }
