@@ -8,6 +8,7 @@ import com.connorgillmead.chat.server.tcp.ChatServerHub;
 import com.connorgillmead.chat.server.tcp.ServerConfig;
 import com.connorgillmead.chat.server.websocket.WebSocketChatEndpoint;
 import java.io.IOException;
+import org.glassfish.grizzly.http.server.CLStaticHttpHandler;
 import org.glassfish.grizzly.http.server.HttpServer;
 
 /**
@@ -85,6 +86,13 @@ public final class ChatHttpServer {
         // The startMillis is used to calculate the server's uptime.
         WebPageServer.register(server, hub, startMillis);
         ApiServer.register(server, hub, config, startMillis, originalArguments);
+
+        // Register the static HTTP handler to serve static files from the "web-pages"
+        // directory.
+        CLStaticHttpHandler staticHttpHandler = new CLStaticHttpHandler(
+                ChatHttpServer.class.getClassLoader(), "web-pages/");
+        server.getServerConfiguration().addHttpHandler(staticHttpHandler, "/web-pages/");
+
         // Attach the WebSocket endpoint to the hub.
         // This allows the WebSocket endpoint to access the ChatServerHub instance for
         // broadcasting messages.

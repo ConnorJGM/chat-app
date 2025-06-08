@@ -2,47 +2,7 @@
 <footer class="bg-light text-center py-3 mt-4 border-top">
     <small>&copy; Connor Gill-Mead 2025</small>
 </footer>
-<script>
-    function showRestartPopup() {
-        const restart = document.createElement('div');
-        restart.id = 'restartPopup';
-        Object.assign(restart.style, {
-            position: 'fixed',
-            top: '0',
-            left: '0',
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 9999
-        });
-        const box = document.createElement('div');
-        box.style = 'background: white; padding: 1em 2em; border-radius: 5px; font-size: 1.2rem;';
-        box.innerText = 'Server is restarting...';
-        restart.appendChild(box);
-        document.body.appendChild(restart);
-    }
-    async function restartServer(e) {
-        e.preventDefault();
-        showRestartPopup();
-        await fetch('/restart', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        setTimeout(() => {
-            window.location.reload();
-        }, 6000);
-    }
-    document.addEventListener('DOMContentLoaded', () => {
-        const restartForm = document.querySelector('form[action="/restart"]');
-        if (restartForm) {
-            restartForm.addEventListener('submit', restartServer);
-        }
-    });
-</script>
+<script src="/web-pages/javascript/footer.js"></script>
 </body>
+
 </html>
