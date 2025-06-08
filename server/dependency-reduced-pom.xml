@@ -13,11 +13,13 @@
         <artifactId>maven-shade-plugin</artifactId>
         <executions>
           <execution>
+            <id>shade-server</id>
             <phase>package</phase>
             <goals>
               <goal>shade</goal>
             </goals>
             <configuration>
+              <finalName>${project.artifactId}</finalName>
               <transformers>
                 <transformer>
                   <mainClass>com.connorgillmead.chat.server.tcp.ChatServerApp</mainClass>

@@ -1,5 +1,5 @@
 # This script is used to start the chat server and handle restarts based on exit codes.
-$jarPath = 'server\target\chat-server-1.0-SNAPSHOT-shaded.jar'
+$jarPath = 'server\target\chat-server.jar'
 $firstRun = $true
 
 # Check if the JAR file exists.

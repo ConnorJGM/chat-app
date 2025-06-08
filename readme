@@ -55,14 +55,24 @@ The project is organized into three main Maven modules:
 
 ### Server
 
-1.  Navigate to the server's target directory:
+1.  Navigate to the project's root directory:
     ```bash
-    cd server/target
+    cd chat-app
     ```
 
 2.  Run the server JAR:
+    Ideal is the use of PowerShell script to start the server:
     ```bash
-    java -jar chat-server-1.0-SNAPSHOT.jar
+    server_start.ps1
+    ```
+    Alternatively, you can run the server JAR directly (but without restart functionality):
+    Navigate to the server's target directory:
+    ```bash
+    cd server/target
+    ```
+    
+    ```bash
+    java -jar chat-server.jar
     ```
     The server will start, and you can configure it via command-line arguments or by following the prompts (e.g., for host, port, and token). 
             By default, it typically listens for TCP clients on port `5555` and WebSocket clients on port `8081`. 
@@ -148,6 +158,16 @@ The project is organized into three main Maven modules:
 *   **SQLite JDBC Driver**: For database connectivity.
 *   **Tyrus**: For WebSocket server implementation.
 *   **JUnit**: For unit testing the application.
+
+## Future Enhancements
+*   Implement more advanced features like private messaging, file sharing, and image posting.
+*   Add support for more complex games and interactive features.
+*   Switch web chat to wss (WebSocket Secure) for enhanced security.
+*   Improve the TUI client with more features and better user experience.
+*   Use AWT for token input in the CLI/Tui client for better security.
+*   Implement a more robust user management system with roles and permissions.
+*   Add support for more database systems (e.g., MySQL, PostgreSQL) for scalability.
+*   Allow administration of the server via the web interface, including user database management and server settings.
 
 ## Program File Layout
 
