@@ -1,10 +1,10 @@
 # This script is used to start the chat server and handle restarts based on exit codes.
-$jarPath = 'server\target\chat-server.jar'
+$jarPath = 'dist\run-server.bat'
 $firstRun = $true
 
 # Check if the JAR file exists.
 while ($true) {
-    $command = 'java -jar "' + $jarPath + '"'
+    $command = $jarPath
 
     # If this is not the first run, add the --auto-start flag.
     if (-not $firstRun) {

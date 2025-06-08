@@ -3,6 +3,30 @@
 A real-time chat application that allows users to communicate with each other. This project is a Java-based application with a client-server architecture, 
     supporting both command-line (CLI) and text-based user interface (TUI) clients, as well as a web-based client.
 
+"AI-ThirdParty-Declaration.docx" is a third-party declaration file that contains information about the third-party libraries used in this project, 
+    including their licenses and usage. It is important to review this file to understand the dependencies and their respective licenses.
+
+## Quick Start Guide
+
+*       ```cmd
+            cd chat-app
+            PowerShell
+            .\server_start.ps1
+        ```
+
+*       ```cmd
+            cd dist
+            .\run-client-cli.bat
+            .\run-client-tui.bat
+        ```
+
+*   **.bat files**: All `.bat` files in the `dist/` directory are designed to run the application using a bundled JDK, 
+        allowing you to run the application without needing to install Java on your system (dist\jdk-23\bin\java.exe).
+
+*   **PowerShell Script**: May need to use "powershell.exe -ExecutionPolicy Bypass -File server_start.ps1" 
+        to run the PowerShell script if you encounter execution policy issues.
+
+
 ## Project Structure
 
 The project is organized into three main Maven modules:
@@ -31,10 +55,56 @@ The project is organized into three main Maven modules:
 
 ## Prerequisites
 
-*   Java Development Kit (JDK) 11 or higher.
+*   Java Development Kit (JDK) 17 or higher (if university computers, you should refer to Old Java Versions section, no install required).
 *   Apache Maven.
 *   Modern web browser (for the web client).
 *   (Optional) DBBrowser or SQLite client for inspecting the database.
+
+## Running on PCs with Java 8-16.
+
+*   If you are using an older version of Java (Java 16 or earlier), 
+        you may need to use the .bat files provided in the `dist/` directory to run the server or the CLI and TUI clients.
+    *   For the server, still use the PowerShell script `server_start.ps1` for starting the server.
+    *   For the CLI client, use `run-client-cli.bat`.
+    *   For the TUI client, use `run-client-tui.bat`.
+
+    ** These scripts launch the bundled jdk-23 java environment, which is included in the `dist/` directory.
+        This allows you to run the application without needing to install Java on your system.
+
+    *  Note that the web client is not supported in older Java versions, as it requires Java 17+ for the WebSocket API.
+    
+    *  Also, if you wish to use your own java environment, you will have to edit the `server_start.ps1` script to point to the `chat-server.jar` file in the `/dist` directory,
+        For this assignment, it points to the `run-server.bat` file in the `/dist` directory, which is a wrapper for the `chat-server.jar` file.
+
+    ** Server **
+
+        ```bash
+        cd chat-app
+        ```
+
+        ```bash
+        PowerShell 
+        .\server_start.ps1
+        ```
+
+        Alternatively, you can run the server JAR directly (but without restart functionality):
+
+        ```bash
+        cd dist
+        .\run-server.bat
+        ```
+
+    ** Clients ** 
+
+        ```bash
+        cd dist
+        .\run-client-cli.bat
+        ```
+
+        ```bash
+        cd dist
+        .\run-client-tui.bat
+        ```
 
 ## Building the Application
 
@@ -61,17 +131,15 @@ The project is organized into three main Maven modules:
     ```
 
 2.  Run the server JAR:
-    Ideal is the use of PowerShell script to start the server:
+    Ideally use of PowerShell script to start the server:
     ```bash
-    server_start.ps1
+    PowerShell
+    .\server_start.ps1
     ```
     Alternatively, you can run the server JAR directly (but without restart functionality):
-    Navigate to the server's target directory:
+    Navigate to the `dist` directory:
     ```bash
-    cd server/target
-    ```
-    
-    ```bash
+    cd dist
     java -jar chat-server.jar
     ```
     The server will start, and you can configure it via command-line arguments or by following the prompts (e.g., for host, port, and token). 
@@ -88,9 +156,9 @@ The project is organized into three main Maven modules:
 
 #### CLI Client
 
-1.  Navigate to the client's target directory:
+1.  Navigate to the `dist` directory where the client JAR files are located:
     ```bash
-    cd client/target
+    cd dist
     ```
 
 2.  Run the CLI client JAR:
@@ -104,7 +172,7 @@ The project is organized into three main Maven modules:
 
 1.  Navigate to the client's target directory:
     ```bash
-    cd client/target
+    cd dist
     ```
 
 2.  Run the TUI client JAR:
@@ -177,7 +245,7 @@ chat-app/
 ├── chat.db
 ├── chat.log
 ├── pom.xml
-├── readme
+├── README
 ├── server_config.properties
 ├── server_start.ps1
 ├── .vscode/
