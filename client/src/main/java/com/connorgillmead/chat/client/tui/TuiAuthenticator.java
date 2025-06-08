@@ -118,6 +118,10 @@ final class TuiAuthenticator {
 
             if (responseMessage.isSuccess()) {
                 authenticatedUser.set(tentativeUsername);
+
+                if (responseMessage.getToken() != null && !responseMessage.getToken().isEmpty()) {
+                    tokenReference.set(responseMessage.getToken());
+                }
                 showSuccess(gui, responseMessage.getMessage());
                 return true;
             }

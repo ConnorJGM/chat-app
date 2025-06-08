@@ -20,6 +20,7 @@ import javax.net.ssl.SSLServerSocketFactory;
 public final class ChatServer implements AutoCloseable {
 
     // Constant keystore password for usability.
+    // In a production environment, this should be changed to a secure password.
     private static final String KEYSTORE_PASSWORD = "changeit";
 
     // The server socket used to accept client connections.

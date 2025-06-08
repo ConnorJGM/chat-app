@@ -98,7 +98,6 @@ public final class Database {
             preparedStatement.setString(1, username);
             preparedStatement.setString(2, hashedPassword);
             preparedStatement.executeUpdate();
-            System.out.println("User " + username + " added successfully.");
             return true;
         } catch (SQLException error) {
             System.err.println("Error adding user: " + username + ": " + error.getMessage());

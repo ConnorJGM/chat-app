@@ -425,6 +425,7 @@ public final class ChatClientTuiApp {
      */
     private void doQuit() {
         try {
+            this.printWriter.println(ChatMessage.bye(this.authenticatedUser.get()).toJson());
             if (this.timer != null) {
                 this.timer.cancel();
             }

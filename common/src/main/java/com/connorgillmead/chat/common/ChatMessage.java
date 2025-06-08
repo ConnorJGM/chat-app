@@ -31,7 +31,8 @@ public final class ChatMessage {
                 @Override
                 public boolean shouldSkipField(FieldAttributes fieldAttributes) {
                     return fieldAttributes.getName().equals("success")
-                        || fieldAttributes.getName().equals("password");
+                        || fieldAttributes.getName().equals("password")
+                        || fieldAttributes.getName().equals("token");
                 }
 
                 @Override
