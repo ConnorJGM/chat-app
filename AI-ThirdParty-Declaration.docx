@@ -1,0 +1,67 @@
+Generative AI and Third-Party Content Declaration
+
+This document outlines the use of generative AI tools and third-party libraries/assets within the "Chat Application" project.
+
+1. Generative AI Usage
+
+   - GitHub Copilot: This generative AI programming assistant was utilized during the development of this project.
+
+    ####  (No generated code was copy and pasted, I just utilised Copilot for learning and debugging). ####
+   
+    Its contributions included:
+    
+     - Providing code suggestions, completions, and refactoring ideas.
+     - Assisting in debugging and troubleshooting issues.
+     - Explaining code segments, libraries, and programming concepts.
+     - Generating Javadoc comments and other documentation fragments.
+     - Assisting in the formulation of textual content, including parts of this declaration and the project readme.
+   - I maintained final responsibility for reviewing, testing, modifying, and integrating all AI-generated 
+        or AI-assisted content to ensure it met project requirements, adhered to best practices, and functioned correctly as intended.
+
+2. Third-Party Libraries
+
+   The project leverages several third-party libraries, primarily managed through Apache Maven. 
+        The `pom.xml` files within each module (`client`, `server`, `common`) declare these dependencies, 
+            manage their versions, and facilitate access to their respective license information. 
+            
+    Key libraries include:
+
+   - **Common (Shared by Client and Server):**
+     - `com.google.code.gson:gson`: Used for JSON serialization and deserialization of chat messages and other data structures.
+
+   - **Server-Side:**
+     - `org.glassfish.tyrus:tyrus-server` & `org.glassfish.tyrus:tyrus-container-grizzly-server`: For implementing the WebSocket server endpoint (`WebSocketChatEndpoint.java`).
+     - `org.glassfish.grizzly:grizzly-http-server`: For the embedded HTTP server (`ChatHttpServer.java`) which serves the web UI and API endpoints.
+     - `jakarta.websocket:jakarta.websocket-api`: Standard API for WebSocket development.
+     - `org.xerial:sqlite-jdbc`: JDBC driver enabling interaction with the SQLite database (`chat.db`) for user and message persistence.
+     - `org.mindrot:jbcrypt`: Used for securely hashing user passwords before storage (`Database.java`).
+
+   - **Client-Side (TUI):**
+     - `com.googlecode.lanterna:lanterna`: Utilised for creating the Text-based User Interface (TUI) for the chat client (`ChatClientTuiApp.java`).
+
+   - **Testing (as indicated in `common/dependency-reduced-pom.xml`):**
+     - `org.junit.jupiter:junit-jupiter-api` & `org.junit.jupiter:junit-jupiter-engine`: For unit testing components of the application.
+
+3. Third-Party Assets / Project-Specific Resources
+
+   - **`keystore.p12`**: A PKCS12 keystore file located in `server/src/main/resources/`. 
+        This is used by the server (`ChatServer.java`) to enable SSL/TLS encryption for TCP client connections. 
+            This file was used for development and testing purposes, with the password "changeit" as indicated in the server code.
+   - **Web Interface Files (`server/src/main/resources/web-pages/`)**: A collection of HTML files (`chat.html`, `dashboard.html`, `footer.html`, `header.html`, `users.html`) 
+        that constitute the web-based client interface. These were developed as part of the project.
+   - **Database Schema (`server/src/main/resources/db_chat_schema.sql`)**: An SQL script defining the structure (tables, columns) of the SQLite database used by the application. 
+        This schema was designed and created for the project.
+
+4. Original Work and License Recording
+
+   - The core application logic, architectural design (including the multi-module Maven structure), 
+        the majority of the Java code across all modules (`client`, `server`, `common`), 
+            the PowerShell startup script (`server_start.ps1`), and the specific content and structure of the web interface pages and database schema were developed by the student, 
+                with AI assistance as declared in Section 1.
+   - Licenses for the third-party libraries listed are managed and declared via their respective entries in the Maven `pom.xml` files. 
+        These files serve as the primary record for these dependencies.
+   - This document serves as the declaration for the use of generative AI.
+
+Date: 8th June, 2025
+Student: Connor Gill-Mead
+Student Number: 230051034
