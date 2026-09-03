@@ -16,6 +16,11 @@ A multi-client real-time chat application developed in Java using a modular clie
 
 Java | Maven | TCP | WebSockets | SQLite | Lanterna
 
+## Screenshots
+
+![Chat App TUI](docs/chat-app-tui.png)
+![Chat App Web](docs/chat-app-web.png)
+
 A real-time chat application that allows users to communicate with each other. This project is a Java-based application with a client-server architecture, 
     supporting both command-line (CLI) and text-based user interface (TUI) clients, as well as a web-based client.
 
@@ -47,15 +52,15 @@ A real-time chat application that allows users to communicate with each other. T
 
 The project is organized into three main Maven modules:
 
-*   **`common/`**: Contains shared code used by both the client and server, primarily the [`com.connorgillmead.chat.common.ChatMessage`]
-            (common/src/main/java/com/connorgillmead/chat/common/ChatMessage.java) class for message handling.
+*   **`common/`**: Contains shared code used by both the client and server, primarily the [`com.YOUR_FOLDER_NAME.chat.common.ChatMessage`]
+            (common/src/main/java/com/YOUR_FOLDER_NAME/chat/common/ChatMessage.java) class for message handling.
 
 *   **`server/`**: Implements the chat server.
-    *   Handles TCP connections for CLI/TUI clients ([`com.connorgillmead.chat.server.tcp.ChatServerApp`]
-            (server/src/main/java/com/connorgillmead/chat/server/tcp/ChatServerApp.java)).
+    *   Handles TCP connections for CLI/TUI clients ([`com.YOUR_FOLDER_NAME.chat.server.tcp.ChatServerApp`]
+            (server/src/main/java/com/YOUR_FOLDER_NAME/chat/server/tcp/ChatServerApp.java)).
 
-    *   Handles WebSocket connections for web clients ([`com.connorgillmead.chat.server.websocket.WebSocketChatEndpoint`]
-            (server/src/main/java/com/connorgillmead/chat/server/websocket/WebSocketChatEndpoint.java)).
+    *   Handles WebSocket connections for web clients ([`com.YOUR_FOLDER_NAME.chat.server.websocket.WebSocketChatEndpoint`]
+            (server/src/main/java/com/YOUR_FOLDER_NAME/chat/server/websocket/WebSocketChatEndpoint.java)).
             
     *   Manages user authentication and message broadcasting.
 
@@ -63,11 +68,11 @@ The project is organized into three main Maven modules:
             (server/src/main/resources/web-pages/chat.html)).
 
 *   **`client/`**: Implements the chat client.
-    *   **CLI Client**: A command-line interface client ([`com.connorgillmead.chat.client.cli.ChatClientApp`]
-            (client/src/main/java/com/connorgillmead/chat/client/cli/ChatClientApp.java)).
+    *   **CLI Client**: A command-line interface client ([`com.YOUR_FOLDER_NAME.chat.client.cli.ChatClientApp`]
+            (client/src/main/java/com/YOUR_FOLDER_NAME/chat/client/cli/ChatClientApp.java)).
 
-    *   **TUI Client**: A text-based user interface client using Lanterna ([`com.connorgillmead.chat.client.tui.ChatClientTuiApp`]
-            (client/src/main/java/com/connorgillmead/chat/client/tui/ChatClientTuiApp.java)).
+    *   **TUI Client**: A text-based user interface client using Lanterna ([`com.YOUR_FOLDER_NAME.chat.client.tui.ChatClientTuiApp`]
+            (client/src/main/java/com/YOUR_FOLDER_NAME/chat/client/tui/ChatClientTuiApp.java)).
 
 ## Prerequisites
 
@@ -273,7 +278,7 @@ chat-app/
 │   │   ├── main/
 │   │   │   └── java/
 │   │   │       └── com/
-│   │   │           └── connorgillmead/
+│   │   │           └── YOUR_FOLDER_NAME/
 │   │   │               └── chat/
 │   │   │                   └── client/
 │   │   │                       ├── cli/
@@ -288,7 +293,7 @@ chat-app/
 │   │   └── test/
 │   │       └── java/
 │   │           └── com/
-│   │               └── connorgillmead/
+│   │               └── YOUR_FOLDER_NAME/
 │   │                   └── chat/
 │   │                       └── client/ 
 │   │                           └── // Client test files (e.g., AppTest.java)
@@ -304,7 +309,7 @@ chat-app/
 │   │   └── main/
 │   │       └── java/
 │   │           └── com/
-│   │               └── connorgillmead/
+│   │               └── YOUR_FOLDER_NAME/
 │   │                   └── chat/
 │   │                       └── common/
 │   │                           └── ChatMessage.java
@@ -317,7 +322,7 @@ chat-app/
 │   │   ├── main/
 │   │   │   ├── java/
 │   │   │   │   └── com/
-│   │   │   │       └── connorgillmead/
+│   │   │   │       └── YOUR_FOLDER_NAME/
 │   │   │   │           └── chat/
 │   │   │   │               └── server/
 │   │   │   │                   ├── database/
@@ -355,7 +360,7 @@ chat-app/
 │   │   └── test/
 │   │       └── java/
 │   │           └── com/
-│   │               └── connorgillmead/
+│   │               └── YOUR_FOLDER_NAME/
 │   │                   └── chat/
 │   │                       └── AppTest.java
 │   └── target/
