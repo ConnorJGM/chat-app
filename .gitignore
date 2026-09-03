@@ -7,6 +7,7 @@ javadocs
 
 # IDE folders
 .vscode/
+.vs/
 
 # Java Environment
 /dist/jdk-23
